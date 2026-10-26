@@ -19,7 +19,7 @@ The mapping is intentionally evidence-based:
 |---|---|
 | Last reviewed | 2026-10-26 |
 | Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and docs present; no Maven build or deployment descriptors |
-| Git commit | None; repository is not initialized |
+| Git commit | Git initialized; backup commits include `b90ecef` and `ac6b4bd` |
 | Java source inspected | 37 main files, 8 test files |
 | Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 4 enums, 10 test-only lambdas, 0 `switch`, 2 varargs methods |
 | JSP/CSS/JS source inspected | 15 JSPs, `app.css`, `app.js` |
@@ -71,6 +71,71 @@ Rows referencing service, controller, filter, or `web.xml` code are documented h
 | 7. Generic, ArrayList, Lambda Expression | Lambda expressions | `src/test/java/com/library/dao/*Test.java` | Tests use lambdas with `assertThrows`, `assertDoesNotThrow`, and similar JUnit APIs. No production lambda was added artificially | Implemented (tests only) |
 | 8. GUI | Java Swing/AWT/JavaFX and Java event handling | None | The project uses server-rendered JSP/HTML/CSS/vanilla JavaScript. JavaScript event handling is web UI behavior, not Java GUI programming | Not applicable |
 | 9. JDBC | `Connection`, `PreparedStatement`, `ResultSet`, `SQLException`, `DriverManager`, generated keys | `config/DatabaseConnection.java`; all `dao/jdbc/Jdbc*DAO.java` | Executes handwritten parameterized SQL, maps `ResultSet` rows, retrieves generated keys, wraps `SQLException`, and uses caller-supplied connections for transactions | Implemented |
+
+## Code Evidence Index
+
+This table is the short answer for an oral review: it points to the exact file and line that demonstrates each Java feature. Line numbers refer to the 2026-10-26 snapshot; if the code moves, cite the class or method name instead, because that is the stable reference.
+
+Path prefixes used below:
+
+- `main/` = `src/main/java/com/library/`
+- `test/` = `src/test/java/com/library/`
+- `web/` = `src/main/webapp/`
+
+| Topic | Java feature | Exact code evidence | What to point out |
+|---|---|---|---|
+| 1. Overview | Package and layer separation | `main/model/Book.java:1`; `main/dao/BookDAO.java:1`; `main/dao/jdbc/JdbcBookDAO.java:1` | Three packages show the model, DAO contract, and JDBC implementation layers. |
+| 1. Overview | Class, object, method | `main/model/Book.java:16`; `main/dao/jdbc/JdbcBookDAO.java:240` | `Book` is the class; `new Book()` creates an object; `getIsbn()`/`setIsbn()` are methods. |
+| 1. Overview | Constructor overloading | `main/model/Book.java:31` and `:34`; `main/model/Loan.java:36` and `:39` | A no-argument constructor and a full-field constructor coexist in the same class. |
+| 2. Basic I/O | Variables, primitive and reference types | `main/model/Book.java:18-29`; `main/model/Loan.java:24-34`; `main/model/Member.java:21` | `Integer`, `String`, `LocalDate`, `LocalDateTime`, `boolean`, and `long` are used for real fields. |
+| 2. Basic I/O | Operators and arithmetic | `main/dao/jdbc/JdbcBookDAO.java:84`; `main/model/Page.java:28`; `main/dao/jdbc/JdbcBookDAO.java:236` | Offset uses multiplication; total pages use division and `Math.ceil`; ISBN uses a ternary and `trim()`. |
+| 2. Basic I/O | File I/O | `main/config/DatabaseConnection.java:87-93` | `Files.isReadable`, `FileReader`, `BufferedReader`, `IOException`, and try-with-resources read an external password file. |
+| 3. Control | `if` and ternary conditions | `main/dao/jdbc/JdbcBookDAO.java:196-219`; `main/dao/jdbc/JdbcLoanDAO.java:234-264` | Each nullable search filter is applied with an `if`; there is no `switch` in the project. |
+| 3. Control | Loops | `main/dao/jdbc/JdbcBookCopyDAO.java:55`; `main/dao/jdbc/JdbcBookAuthorDAO.java:62` and `:76`; `main/dao/jdbc/JdbcDashboardDAO.java:48` | `while (rs.next())` maps rows; enhanced `for` iterates lists; indexed `for` reads the varargs array. |
+| 3. Control | Array through varargs | `main/dao/jdbc/JdbcDashboardDAO.java:46-48`; `test/dao/support/TestDatabase.java:64` | `Object...` and `String...` are compiled as arrays; `params.length` and `params[i]` prove the array access. |
+| 4. Object | Encapsulation | `main/model/Book.java:18-29`; `main/model/Book.java:43-56`; `main/model/Page.java:17` | Fields are private; access is through public getters/setters; `Page.content` is `private final`. |
+| 4. Object | `equals`, `hashCode`, `toString` | `main/model/Book.java:132`, `:140`, `:145`; `main/model/Page.java:68`, `:80`, `:84` | Entity classes compare by ID; `Page` compares by value; all provide readable `toString()` output. |
+| 5. Inheritance | `extends` | `main/exception/DataAccessException.java:15`, `:21-24`, `:33` | This is the only class inheritance in Person 1: a custom unchecked exception extends `RuntimeException`, calls `super(message, cause)`, and inspects `instanceof SQLException`. |
+| 5. Interface | `interface` contract | `main/dao/BookDAO.java:22`; `main/dao/LoanDAO.java:23` | Nine DAO interfaces declare operations without JDBC details. |
+| 5. Interface | `implements` and polymorphism | `main/dao/jdbc/JdbcBookDAO.java:25`; `test/dao/JdbcBookDAOTest.java:26` | `JdbcBookDAO` implements `BookDAO`; the test field is typed as `BookDAO`, so it depends on the interface, not the concrete class. |
+| 6. Exception | Catch and wrap | `main/dao/jdbc/JdbcBookDAO.java:67-68`; `main/exception/DataAccessException.java:21-24` | A checked `SQLException` is caught and wrapped in `DataAccessException` with context and the original cause. |
+| 6. Exception | Try-with-resources | `main/dao/jdbc/JdbcBookDAO.java:59-61`; `main/dao/jdbc/JdbcLoanDAO.java:80`; `main/config/DatabaseConnection.java:90` | JDBC statements, result sets, and the password reader are closed automatically. |
+| 6. Enum | Enumeration | `main/model/enums/LoanStatus.java:8-10`; `main/model/enums/CopyStatus.java:9-12`; `main/model/enums/MemberStatus.java:6-8` | Status values are type-safe constants and mirror database `CHECK` constraints. |
+| 7. Generic | Generic class and generic parameter | `main/model/Page.java:15`, `:17`, `:23`; `main/dao/BookDAO.java:26` | `Page<T>` and `List<T>` reuse one pagination type; `Page<Book>` binds `T` to `Book`. |
+| 7. Collection | `ArrayList`, `List`, `Set` | `main/model/Page.java:24`; `main/model/Book.java:28`; `main/dao/jdbc/JdbcAuthorDAO.java:63` and `:82`; `main/dao/jdbc/JdbcBookAuthorDAO.java:60` | `ArrayList` makes a defensive copy and accumulates rows; `List` is the return abstraction; `LinkedHashSet` removes duplicate author IDs. |
+| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java:103-104`; `test/dao/JdbcBookCopyDAOTest.java:132-133`; `test/dao/JdbcLoanDAOTest.java:110-111` | Ten lambdas exist, all passed to JUnit `assertThrows`/`assertDoesNotThrow`; no production lambda was added. |
+| 8. GUI | Java GUI is not applicable | `web/WEB-INF/views/books/list.jsp:2`, `:62`, `:64`; `web/assets/js/app.js:4-5` | The UI is JSP/JSTL/EL plus vanilla JavaScript; there is no Swing, AWT, or JavaFX. |
+| 9. JDBC | `DriverManager` and `Connection` | `main/config/DatabaseConnection.java:73`; `test/dao/support/TestDatabase.java:52`; `main/dao/BookDAO.java:13-14` | `DriverManager.getConnection` creates the connection; the caller passes it in; DAOs never commit, roll back, or close it. |
+| 9. JDBC | `PreparedStatement` and `ResultSet` | `main/dao/jdbc/JdbcBookDAO.java:59-61`; `main/dao/jdbc/JdbcMemberDAO.java:114` | SQL uses `?` placeholders, `setInt`/`setString` bind values, and `while (rs.next())` maps rows. |
+| 9. JDBC | Generated keys | `main/dao/jdbc/JdbcBookDAO.java:110` and `:124`; `main/dao/jdbc/JdbcLoanDAO.java:80` and `:95` | `RETURN_GENERATED_KEYS` plus `getGeneratedKeys()` writes the database ID back into the model. |
+| 9. JDBC | Row locking | `main/dao/jdbc/JdbcBookCopyDAO.java:31`; `main/dao/jdbc/JdbcLoanDAO.java:49` and `:53` | Three `SELECT ... FOR UPDATE` queries lock a copy or loan row inside the caller's transaction. |
+| 9. JDBC | Batch execution | `main/dao/jdbc/JdbcBookAuthorDAO.java:78` and `:80` | `addBatch()` and `executeBatch()` insert all author links for a book. |
+| 9. JDBC | Database constraints | `src/main/resources/db/schema.sql:38`, `:45`, `:77`, `:110` | Unique ISBN, trimmed length 13–20, due date exactly 14 days later, and one active loan per copy. |
+| 9. JDBC | Date and time mapping | `main/model/Loan.java:24-26`; `main/dao/jdbc/JdbcLoanDAO.java:286-288`; `main/dao/jdbc/JdbcDashboardDAO.java:31` | `LocalDate`/`LocalDateTime` fields map through `setObject` and `rs.getObject(..., LocalDate.class)`; overdue uses caller-supplied `today`. |
+
+### 60-second answer order
+
+If the teacher asks "which part of the code demonstrates the Java concept?", open the files in this order:
+
+1. `main/model/Book.java` — class, private fields, two constructors, getters/setters, `equals`/`hashCode`/`toString`.
+2. `main/dao/BookDAO.java` — interface contract.
+3. `main/dao/jdbc/JdbcBookDAO.java` — `implements`, JDBC, try-with-resources, generated keys, exception wrapping.
+4. `main/model/Page.java` — generics, `ArrayList`, pagination properties `first`/`last`.
+5. `main/exception/DataAccessException.java` — inheritance, constructor chaining, SQLState.
+6. `main/dao/jdbc/JdbcBookAuthorDAO.java` — `List`/`Set`, enhanced `for`, batch.
+7. `main/dao/jdbc/JdbcDashboardDAO.java` — varargs and indexed array loop.
+8. `test/dao/JdbcBookDAOTest.java` — JUnit, `@Test`, lambda, try-with-resources.
+9. `main/config/DatabaseConnection.java` — file I/O and `DriverManager`.
+10. `web/WEB-INF/views/books/list.jsp` and `web/assets/js/app.js` — web UI; explicitly say Java GUI is not applicable.
+
+### Claims to avoid
+
+- Do not say Java GUI is implemented; there is no Swing/AWT/JavaFX code.
+- Do not say lambdas are used in production; all ten are in JUnit tests.
+- Do not say standalone arrays are used; arrays appear only through varargs.
+- Do not say there is a large inheritance hierarchy; only `DataAccessException extends RuntimeException` exists.
+- Do not say DAOs manage transactions; they receive a caller-owned `Connection` and never commit or roll back. The service layer that owns transaction boundaries belongs to Person 2.
+- Do not say Maven, Servlet, WAR, Tomcat, or HTTP integration is verified; those remain Person 2 work.
 
 ## Source Pattern Inventory
 
@@ -207,6 +272,7 @@ Comments are concise English explanations of the Java concept and its role in th
 
 ## Current Conclusion
 
+- **Code evidence:** exact `file:line` pointers are listed in the Code Evidence Index above; use that table when the instructor asks which code demonstrates a Java feature.
 - **Implemented:** variables/types/operators, configuration and file I/O, loops, varargs arrays, debugging process, classes/objects/methods, encapsulation, packages, interfaces/polymorphism, exception handling, enumerations, generics, `ArrayList`, test lambdas, and JDBC.
 - **Partially implemented:** Maven web-application packaging (build missing), conditions/`switch` (conditions present, no switch needed), and inheritance (runtime-exception parent present; service/servlet hierarchy pending Person 2).
 - **Planned:** Maven build, Controller/Service/filter code, Servlet inheritance, and HTTP integration.
