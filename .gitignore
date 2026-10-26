@@ -1,0 +1,40 @@
+# Build output
+target/
+build/
+out/
+*.class
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.apt_generated/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs and local data
+*.log
+logs/
+*.tmp
+
+# Environment and secrets
+.env
+.env.*
+*.local
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local caches
+.cache/
