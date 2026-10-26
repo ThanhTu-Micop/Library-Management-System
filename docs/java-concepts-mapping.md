@@ -19,7 +19,8 @@ The mapping is intentionally evidence-based:
 |---|---|
 | Last reviewed | 2026-10-26 |
 | Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and docs present; no Maven build or deployment descriptors |
-| Git commit | Git initialized; backup commits include `b90ecef` and `ac6b4bd` |
+| Git state | Initialized on `main`; see `git log` for the latest commit |
+| Code evidence audit | 59 `file:line` references resolved; 43 semantic spot checks passed; 9/9 DAO interface/implementation pairs matched; 3 locking SQL queries confirmed |
 | Java source inspected | 37 main files, 8 test files |
 | Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 4 enums, 10 test-only lambdas, 0 `switch`, 2 varargs methods |
 | JSP/CSS/JS source inspected | 15 JSPs, `app.css`, `app.js` |
