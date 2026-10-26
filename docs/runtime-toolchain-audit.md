@@ -239,6 +239,47 @@ second active loan for the same copy: rejected
 
 The same seven checks passed on both `library_db` and `library_test`; no probe rows were committed.
 
+### 4.5.1 Manual PK, FK, and relation matrix
+
+`src/test/resources/db/manual-relation-test.sql` is a reproducible manual test script. It creates one valid relation chain, runs every probe inside a single transaction, records each outcome in a temporary result table, prints a summary and detail list, and ends with `ROLLBACK`. It does not depend on a particular identifier range because probe values are derived from `txid_current()`.
+
+| Probe group | Probes | Expected behavior |
+|---|---:|---|
+| Primary keys | 10 | Duplicate IDs rejected with `23505`; null components rejected with `23502` |
+| Unique constraints | 5 | Duplicate ISBN, copy code, member code, case-insensitive email, and case-insensitive category name rejected with `23505` |
+| Foreign keys (insert) | 7 | Every child column rejects a missing parent with `23503` |
+| Foreign keys (update) | 2 | Updating a child to a missing parent is rejected with `23503` |
+| `ON DELETE RESTRICT` | 6 | Publisher, category, book, copy, member, and author deletion is blocked while referenced |
+| `ON DELETE CASCADE` | 2 | Deleting a book succeeds and removes its `book_authors` rows |
+| Active-loan partial unique index | 4 | A second active loan for one copy is rejected with `23505`; returning the first loan allows a new active loan |
+| `CHECK` constraints | 11 | Short/long ISBN, invalid year, invalid statuses, wrong due date, invalid return dates, and blank email are rejected with `23514` (long ISBN with `22001`) |
+| Orphan check | 1 | All seven relations contain zero orphan rows after the probes |
+
+Actual result on `library_test` (2026-10-26):
+
+```text
+status | tests
+PASS   |    48
+```
+
+```text
+PSQL_EXIT=0
+```
+
+The seven foreign keys and their delete actions are:
+
+| Child column | Parent | `ON DELETE` |
+|---|---|---|
+| `books.publisher_id` | `publishers.publisher_id` | `RESTRICT` |
+| `books.category_id` | `categories.category_id` | `RESTRICT` |
+| `book_copies.book_id` | `books.book_id` | `RESTRICT` |
+| `loans.copy_id` | `book_copies.copy_id` | `RESTRICT` |
+| `loans.member_id` | `members.member_id` | `RESTRICT` |
+| `book_authors.book_id` | `books.book_id` | `CASCADE` |
+| `book_authors.author_id` | `authors.author_id` | `RESTRICT` |
+
+Rollback was verified: `library_test` returned to its pre-test state (`publishers=3`, `categories=4`, `authors=4`, `books=0`, `book_copies=0`, `members=2`, `loans=0`, `book_authors=0`), with zero leftover `MANUAL-*` rows and zero leftover temporary tables.
+
 ### 4.6 Static EL property check
 
 A small checker scanned every JSP expression and resolved model property references against the compiled classes.
