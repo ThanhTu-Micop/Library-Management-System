@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.2 |
-| Date | 2026-10-26 |
+| Version | 1.3 |
+| Date | 2026-10-27 |
 | Status | Person 1 implementation complete and verified with standalone tools; Person 2 build, deployment, and HTTP integration remain blocked |
 | Person 1 | Database, SQL, JDBC/DAO, UI/UX |
 | Person 2 | Controller, Service/business rules, integration |
@@ -180,10 +180,11 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 | PostgreSQL databases and application role | **PASS** | `library_db`, `library_test`, and `library_app` connection verified |
 | JDBC driver smoke test | **PASS** | Driver `42.7.14`, server `16.15`, `SELECT 1` returned `1` |
 | Main and test source compilation | **PASS** | `javac --release 17`: 37/37 main files and 8/8 test files compiled |
-| Schema, seed, and constraints | **PASS** | Applied to `library_db` and `library_test`; 8 tables, 14 named indexes, seed counts `3/4/4/4/8/3/3/4` |
+| Schema, seed, and constraints | **PASS** | Applied to `library_db` and `library_test`; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes; seed counts `3/4/4/4/8/3/3/4` |
 | DAO tests | **PASS (standalone)** | JUnit Platform Console: 39 tests found, 39 successful, 0 failed |
 | JSP compilation | **PASS (standalone)** | Tomcat `JspC`: 15 generated Java files, 15 class files, 0 errors |
 | Static EL property check | **PASS** | 320 expressions scanned; 214 model property references checked; no missing property |
+| Manual PK/FK/relation probes | **PASS** | 48 probes (PK, unique, FK insert/update, ON DELETE RESTRICT/CASCADE, active-loan partial unique, CHECK, orphan check) all pass inside a rolled-back transaction on `library_test` |
 | Project build, WAR, and deployment | **BLOCKED** | No `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, or WAR |
 | JUnit 5/Surefire integration | **BLOCKED** | No Maven test dependency, plugin, or Surefire execution |
 | HTTP flows | **BLOCKED** | Controllers, Services, filters, and deployment descriptors are Person 2 scope |
@@ -666,13 +667,13 @@ Integration tests use a separate `library_test` database and are gated by test e
 
 ### Status
 
-Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 39 tests found, 39 successful, 0 failed, exit code 0. Main sources compile with `javac --release 17` (37 files), test sources compile (8 files), and all 15 JSPs compile with Tomcat `JspC` and JSTL 3.0.1 (0 errors). These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
+Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 39 tests found, 39 successful, 0 failed, exit code 0. Main sources compile with `javac --release 17` (37 files), test sources compile (8 files), and all 15 JSPs compile with Tomcat `JspC` and JSTL 3.0.1 (0 errors). Additionally, 48 manual PK/FK/relation probes pass inside a rolled-back transaction on `library_test`. These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
 
 ## 14. Documentation Plan
 
 | Document | Owner | Status |
 |---|---|---|
-| `README.md` | Person 2 final; Person 1 DB/UI sections | Planned |
+| `README.md` | Person 2 final; Person 1 DB/UI sections | Updated (Person 1 database/build sections written; full completion awaits Person 2 Maven/WAR sections) |
 | `docs/architecture.md` | Person 2; Person 1 reviews DB/UI | Planned |
 | `docs/database-design.md` | Person 1 | **Updated for the implemented schema** |
 | `docs/api-contract.md` | Split: Person 1 DAO/DB; Person 2 Service/Controller | Planned |
@@ -689,7 +690,7 @@ Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 3
 | 0. Runtime/toolchain | Verify DB/JDBC tools; support install | Confirm Tomcat/Servlet target; integration setup | **PASS:** runtime and namespace verified; tools installed. Project build/deployment/test gate remains open. |
 | 1. Inspection/plan | Consolidated plan, ownership, Java concepts doc | Review contracts | Plan approved; no code claims |
 | 2. Schema/contracts | Complete: schema, seed, models, DAO interfaces, DB docs | Service interfaces and endpoint/view contract still pending | Schema applies to both databases; Person 1 contracts are frozen |
-| 3. DAO layer | Complete: JDBC DAOs and 39 passing DAO tests | Services against DAO contracts; transaction logic pending | DAO/constraint tests pass standalone; no Maven/Surefire run |
+| 3. DAO layer | Complete: JDBC DAOs and 39 passing DAO tests; 48 manual PK/FK/relation probes pass | Services against DAO contracts; transaction logic pending | DAO/constraint tests pass standalone; no Maven/Surefire run |
 | 4. UI + controllers | Complete: JSP/CSS/JS and client validation; all 15 JSPs compile | Servlets, services, filters pending | Screens are not wired to real endpoints yet |
 | 5. Integration | Pending end-to-end defects | Own end-to-end integration | All 12 functions still unverified over HTTP |
 | 6. Verification/docs | DB/DAO/UI standalone evidence complete | Service/integration evidence pending | Person 1 scope verified; full Definition of Done not met |
