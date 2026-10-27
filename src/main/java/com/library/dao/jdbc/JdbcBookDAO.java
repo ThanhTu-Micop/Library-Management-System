@@ -81,7 +81,7 @@ public class JdbcBookDAO implements BookDAO {
         dataSb.append(" ORDER BY b.book_id");
         dataSb.append(" LIMIT ? OFFSET ?");
         params.add(criteria.getSize());
-        params.add(criteria.getPage() * criteria.getSize());
+        params.add((long) criteria.getPage() * criteria.getSize());
 
         try (PreparedStatement countPs = c.prepareStatement(countSb.toString())) {
             fillParams(countPs, params.subList(0, filterParamCount));
@@ -196,7 +196,7 @@ public class JdbcBookDAO implements BookDAO {
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
             countSb.append(" AND (b.title ILIKE ? OR b.isbn ILIKE ?)");
             dataSb.append(" AND (b.title ILIKE ? OR b.isbn ILIKE ?)");
-            String like = "%" + criteria.getKeyword().trim() + "%";
+            String like = likePattern(criteria.getKeyword());
             params.add(like);
             params.add(like);
         }
@@ -216,7 +216,7 @@ public class JdbcBookDAO implements BookDAO {
                     "WHERE ba.book_id = b.book_id AND a.name ILIKE ?)";
             countSb.append(clause);
             dataSb.append(clause);
-            params.add("%" + criteria.getAuthorName().trim() + "%");
+            params.add(likePattern(criteria.getAuthorName()));
         }
         if (Boolean.TRUE.equals(criteria.getAvailableOnly())) {
             String clause = " AND EXISTS (SELECT 1 FROM book_copies bc " +
@@ -232,6 +232,16 @@ public class JdbcBookDAO implements BookDAO {
         }
     }
 
+    private String likePattern(String value) {
+        if (value == null) {
+            return null;
+        }
+        String escaped = value.trim()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
+    }
     private String trimIsbn(String isbn) {
         return isbn != null ? isbn.trim() : null;
     }

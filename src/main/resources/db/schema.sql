@@ -68,7 +68,7 @@ CREATE TABLE loans (
     loan_id SERIAL PRIMARY KEY,
     copy_id INTEGER NOT NULL REFERENCES book_copies(copy_id) ON DELETE RESTRICT,
     member_id INTEGER NOT NULL REFERENCES members(member_id) ON DELETE RESTRICT,
-    loan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    loan_date DATE NOT NULL,
     due_date DATE NOT NULL,
     return_date DATE,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'RETURNED')),
@@ -89,15 +89,12 @@ CREATE TABLE book_authors (
 );
 
 -- Indexes for search, pagination, and constraints.
-CREATE INDEX idx_books_isbn ON books(isbn);
 CREATE INDEX idx_books_title_lower ON books(LOWER(title));
 CREATE INDEX idx_books_publisher_id ON books(publisher_id);
 CREATE INDEX idx_books_category_id ON books(category_id);
 
 CREATE INDEX idx_book_copies_book_id_status ON book_copies(book_id, status);
-CREATE INDEX idx_book_copies_copy_code ON book_copies(copy_code);
 
-CREATE INDEX idx_members_member_code ON members(member_code);
 CREATE INDEX idx_members_full_name_lower ON members(LOWER(full_name));
 CREATE UNIQUE INDEX ux_members_email_lower
     ON members (LOWER(email))

@@ -11,6 +11,10 @@ import java.time.LocalDate;
  */
 public class LoanSearchCriteria {
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_SIZE = 100;
+
     private Integer memberId;
     private Integer copyId;
     private Integer bookId;
@@ -18,8 +22,8 @@ public class LoanSearchCriteria {
     private LocalDate fromDate;
     private LocalDate toDate;
     private Boolean overdueOnly; // true: only ACTIVE loans whose due date is before today
-    private Integer page = 0;
-    private Integer size = 10;
+    private Integer page = DEFAULT_PAGE;
+    private Integer size = DEFAULT_SIZE;
     private LocalDate today = LocalDate.now();
 
     public LoanSearchCriteria() {
@@ -82,19 +86,19 @@ public class LoanSearchCriteria {
     }
 
     public Integer getPage() {
-        return page;
+        return page != null ? Math.max(0, page) : DEFAULT_PAGE;
     }
 
     public void setPage(Integer page) {
-        this.page = page;
+        this.page = page != null ? Math.max(0, page) : DEFAULT_PAGE;
     }
 
     public Integer getSize() {
-        return size;
+        return size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
     }
 
     public void setSize(Integer size) {
-        this.size = size;
+        this.size = size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
     }
 
     public LocalDate getToday() {

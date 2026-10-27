@@ -12,8 +12,12 @@ public class BookSearchCriteria {
     private Integer categoryId;
     private String authorName;
     private Boolean availableOnly; // true: only books with at least one AVAILABLE copy
-    private Integer page = 0;
-    private Integer size = 10;
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_SIZE = 100;
+
+    private Integer page = DEFAULT_PAGE;
+    private Integer size = DEFAULT_SIZE;
 
     public BookSearchCriteria() {
     }
@@ -59,19 +63,19 @@ public class BookSearchCriteria {
     }
 
     public Integer getPage() {
-        return page;
+        return page != null ? Math.max(0, page) : DEFAULT_PAGE;
     }
 
     public void setPage(Integer page) {
-        this.page = page;
+        this.page = page != null ? Math.max(0, page) : DEFAULT_PAGE;
     }
 
     public Integer getSize() {
-        return size;
+        return size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
     }
 
     public void setSize(Integer size) {
-        this.size = size;
+        this.size = size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
     }
 
     @Override

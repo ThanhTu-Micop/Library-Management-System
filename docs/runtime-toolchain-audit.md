@@ -214,7 +214,7 @@ Both databases were rebuilt with `schema.sql` and `seed.sql` using `psql -v ON_E
 ```text
 metric            | library_db | library_test
 tables            | 8          | 8
-explicit_indexes  | 14         | 14
+named_indexes     | 11         | 11
 publishers        | 3          | 3
 categories        | 4          | 4
 authors           | 4          | 4
@@ -224,6 +224,8 @@ members           | 3          | 3
 loans             | 3          | 3
 book_authors      | 4          | 4
 ```
+
+`named_indexes` counts the `CREATE INDEX` statements (search indexes). In addition, inline unique constraints produce `books_isbn_key`, `book_copies_copy_code_key`, and `members_member_code_key`. Three indexes that duplicated those unique constraints (`idx_books_isbn`, `idx_book_copies_copy_code`, `idx_members_member_code`) were removed (see `E08`).
 
 Constraint probes ran inside a transaction that was rolled back:
 

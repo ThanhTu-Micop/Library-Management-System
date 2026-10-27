@@ -157,7 +157,7 @@ public class JdbcLoanDAO implements LoanDAO {
         dataSb.append(" ORDER BY l.loan_date DESC, l.loan_id");
         dataSb.append(" LIMIT ? OFFSET ?");
         params.add(criteria.getSize());
-        params.add(criteria.getPage() * criteria.getSize());
+        params.add((long) criteria.getPage() * criteria.getSize());
 
         try (PreparedStatement countPs = c.prepareStatement(countSb.toString())) {
             fillParams(countPs, params.subList(0, filterParamCount));

@@ -82,7 +82,7 @@ public class JdbcMemberDAO implements MemberDAO {
         dataSb.append(" ORDER BY m.member_id");
         dataSb.append(" LIMIT ? OFFSET ?");
         params.add(criteria.getSize());
-        params.add(criteria.getPage() * criteria.getSize());
+        params.add((long) criteria.getPage() * criteria.getSize());
 
         try (PreparedStatement countPs = c.prepareStatement(countSb.toString())) {
             fillParams(countPs, params.subList(0, filterParamCount));
@@ -207,7 +207,7 @@ public class JdbcMemberDAO implements MemberDAO {
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
             countSb.append(" AND (m.full_name ILIKE ? OR m.member_code ILIKE ?)");
             dataSb.append(" AND (m.full_name ILIKE ? OR m.member_code ILIKE ?)");
-            String like = "%" + criteria.getKeyword().trim() + "%";
+            String like = likePattern(criteria.getKeyword());
             params.add(like);
             params.add(like);
         }
@@ -218,6 +218,16 @@ public class JdbcMemberDAO implements MemberDAO {
         }
     }
 
+    private String likePattern(String value) {
+        if (value == null) {
+            return null;
+        }
+        String escaped = value.trim()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
+    }
     private void fillParams(PreparedStatement ps, List<Object> params) throws SQLException {
         for (int i = 0; i < params.size(); i++) {
             ps.setObject(i + 1, params.get(i));

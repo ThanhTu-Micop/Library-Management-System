@@ -64,17 +64,14 @@ All tables have `created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`, excep
 
 ## 5. Indexes
 
-The schema creates 14 named search/constraint indexes in addition to primary-key and inline unique-constraint indexes.
+The schema creates 11 named search indexes plus inline unique-constraint indexes (`books_isbn_key`, `book_copies_copy_code_key`, `members_member_code_key`). The three indexes that duplicated inline unique constraints (`idx_books_isbn`, `idx_book_copies_copy_code`, `idx_members_member_code`) were removed because they add no value beyond the unique constraints.
 
 | Table | Index | Purpose |
 |---|---|---|
-| `books` | `idx_books_isbn` | ISBN lookup |
 | `books` | `idx_books_title_lower` | Case-insensitive title search |
 | `books` | `idx_books_publisher_id` | Publisher filter |
 | `books` | `idx_books_category_id` | Category filter |
 | `book_copies` | `idx_book_copies_book_id_status` | Copy lookup and availability counts |
-| `book_copies` | `idx_book_copies_copy_code` | Copy-code lookup |
-| `members` | `idx_members_member_code` | Member-code lookup |
 | `members` | `idx_members_full_name_lower` | Case-insensitive name search |
 | `members` | `ux_members_email_lower` | Partial unique email |
 | `categories` | `ux_categories_name_lower` | Unique category name |
