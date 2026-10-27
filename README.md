@@ -69,7 +69,7 @@ javac --release 17 -d <main-out> -cp postgresql-42.7.14.jar (src/main/java/**/*.
 javac --release 17 -d <test-out> -cp "<main-out>;postgresql-42.7.14.jar" (src/test/java/**/*.java)
 ```
 
-Kết quả lần kiểm chứng gần nhất: **37/37 main**, **8/8 test** file biên dịch thành công.
+Kết quả lần kiểm chứng gần nhất: **37/37 main**, **12/12 test** file biên dịch thành công (8 file gốc + 4 file test mở rộng trong thư mục kiểm thử merge).
 
 ### 3.2 Kiểm thử DAO (JUnit Platform Console, không Maven/Surefire)
 
@@ -77,7 +77,7 @@ Kết quả lần kiểm chứng gần nhất: **37/37 main**, **8/8 test** file
 java -jar junit-platform-console-standalone-1.14.4.jar execute -cp "<main-out>;<test-out>;postgresql-42.7.14.jar" --scan-classpath <test-out> --disable-banner
 ```
 
-Kết quả: **39/39 test thành công**, 0 thất bại.
+Kết quả: **118/118 test thành công** (39 test DAO gốc + 78 test mở rộng từ 4 class test mới), 0 thất bại.
 
 ### 3.3 Kiểm tra thủ công PK/FK/quan hệ (48 probe)
 
@@ -96,6 +96,15 @@ psql -h 127.0.0.1 -p 5432 -U library_app -d library_test -v ON_ERROR_STOP=1 -f s
 ```
 
 Kết quả: **48/48 PASS**, `PSQL_EXIT=0`; `library_test` quay lại trạng thái trước kiểm tra (không còn dòng `MANUAL-*`, không còn bảng tạm).
+
+### 3.4 Chạy toàn bộ kiểm thử (script tiện ích)
+
+Trong thư mục kiểm thử merge có sẵn script `scripts/run-tests.sh` (Linux/macOS) và `scripts/run-tests.ps1` (Windows) để chạy liên tiếp:
+1. Biên dịch main + test (`javac --release 17`)
+2. Chạy JUnit Platform Console (`--scan-classpath build/test`)
+3. Chạy manual PK/FK/relation probes (`psql -f .../manual-relation-test.sql`)
+
+Script tự quét classpath, không cần khai báo từng class test.
 
 ## 4. Giao diện (Person 1)
 

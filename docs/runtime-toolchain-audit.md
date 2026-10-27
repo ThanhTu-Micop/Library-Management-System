@@ -32,7 +32,7 @@
 - 37 main Java source files, compiled to 37 class files.
 - 9 DAO interfaces and 9 JDBC implementations, including `BookAuthorDAO` and `JdbcBookAuthorDAO`.
 - 9 model classes, 4 enums, and 3 search-criteria classes.
-- 8 test source files with 7 DAO test classes; 39 tests pass under the standalone JUnit console.
+- 12 test source files with 11 DAO test classes; 118 tests pass under the standalone JUnit console.
 - 15 JSP files, all compiled by Tomcat `JspC`.
 - `schema.sql`, `seed.sql`, CSS, and vanilla JavaScript.
 - Updated database, implementation, Java-concept, and audit documentation.
@@ -100,7 +100,7 @@ Person 1 verification used actual command execution:
 | Tomcat | `10.1.61` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61` | `version.bat`; `JspC` compilation |
 | PostgreSQL | `16.15` | `C:\Users\BINHND\dev\pgsql-16.15` | `psql --version`; schema/seed and constraint checks |
 | pgJDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar` | Compiled and executed DAO tests |
-| JUnit | `5.14.4` console standalone | Outside the workspace | 39/39 DAO tests passed |
+| JUnit | `5.14.4` console standalone | Outside the workspace | 118/118 DAO tests passed |
 | JSTL | `3.0.1` API + implementation | Outside the workspace | Used by Tomcat `JspC` |
 | Ant | `1.10.15` | Outside the workspace | Required by `JspC` at build time |
 
@@ -175,13 +175,13 @@ The test database URL was supplied with `TEST_DB_URL=jdbc:postgresql://127.0.0.1
 
 ```text
 [         0 containers failed     ]
-[        39 tests found           ]
-[        39 tests successful      ]
+[       118 tests found           ]
+[       118 tests successful      ]
 [         0 tests failed          ]
 EXIT_CODE=0
 ```
 
-The 39 tests cover book CRUD/search/filters, member uniqueness/search/active-loan counts, loan borrow/return/overdue/history queries, dashboard metrics, book-copy lifecycle, book-author replacement, and reference data.
+The 118 tests cover book CRUD/search/filters, member uniqueness/search/active-loan counts, loan borrow/return/overdue/history queries, dashboard metrics, book-copy lifecycle, book-author replacement, reference data, and extended boundary/constraint tests from the merge test suite.
 
 This is **standalone JUnit evidence**, not a Maven/Surefire result.
 
@@ -332,8 +332,8 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 | JSTL | JSTL 3.0.1 JARs used for `JspC` | Correct Jakarta JSTL dependency and taglib URIs | **Partially verified** | `jakarta.tags.*` URIs compile; WAR dependency pending |
 | WAR packaging | No `pom.xml`, no WAR | Maven WAR with JSPs, classes, assets, `WEB-INF` | **Missing** | Person 2 creates the build |
 | Tomcat project deployment | Only stock Tomcat apps deployed | Project WAR deploys and serves routes | **Missing** | No project WAR |
-| JUnit 5/Surefire | Console standalone only | JUnit 5 + Surefire in Maven build | **Partially verified** | 39/39 standalone tests pass; no Surefire execution |
-| Project tests | 7 DAO test classes | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
+| JUnit 5/Surefire | Console standalone only | JUnit 5 + Surefire in Maven build | **Partially verified** | 118/118 standalone tests pass; no Surefire execution |
+| Project tests | 11 DAO test classes (7 gốc + 4 mở rộng) | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
 | Database schema/seed | `schema.sql`, `seed.sql` applied | Constraints, indexes, demo data | **Verified** | 8 tables, 14 indexes, seed counts, seven constraint probes |
 | 14-calendar-day rule | Schema check and DAO persistence implemented | Service computes due date; DB check enforces it; UI displays it | **Partially verified** | Constraint probe rejects +15; generated-date DAO test passes; Service not present |
 | UI assets and JSPs | 15 JSPs, `app.css`, `app.js` | Screens compile and render against real endpoints | **Partially verified** | JSP compile passed; no HTTP render |
@@ -352,10 +352,11 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 
 | Gate requirement | Status | Evidence |
 |---|---|---|
-| Schema, seed, constraints, and indexes exist | **PASS** | Applied to both databases; 8 tables, 14 named indexes |
+| Schema, seed, constraints, and indexes exist | **PASS** | Applied to both databases; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes |
 | Constraint behavior is enforced | **PASS** | Seven rollback-safe probes passed on both databases |
-| Main and test source compile on JDK 17 | **PASS** | `javac --release 17`: 37 main, 8 test files |
-| DAO tests pass against `library_test` | **PASS (standalone)** | 39/39 tests, 0 failures, exit code 0 |
+| Main and test source compile on JDK 17 | **PASS** | `javac --release 17`: 37 main, 12 test files |
+| Manual PK/FK/relation probes pass | **PASS** | 48 probes in rolled-back transaction on `library_test`; 0 failures; no leftover rows |
+| DAO tests pass against `library_test` | **PASS (standalone)** | 118/118 tests, 0 failures, exit code 0 |
 | JSPs compile with JSTL 3.0.1 | **PASS (standalone)** | Tomcat `JspC`: 15 Java files, 15 classes, 0 errors |
 | JSP model properties exist | **PASS** | 214 references checked; no missing property |
 | No secrets in the workspace | **PASS** | Scan found no credential value or secret file; only prose mentions the variable name |
