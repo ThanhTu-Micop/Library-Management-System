@@ -10,7 +10,7 @@
 <p class="page-subtitle mt-2">Select an active member and an available copy. The due date is always 14 calendar days after the loan date.</p>
 
 <div class="form-card">
-    <form method="post" action="<c:url value='/loans/borrow' />" data-guard>
+    <form accept-charset="UTF-8" method="post" action="<c:url value='/loans/borrow' />" data-guard>
         <input type="hidden" name="_csrf" value="<c:out value='${csrfToken}' />" />
 
         <div class="form-group">

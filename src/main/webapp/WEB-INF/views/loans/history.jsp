@@ -14,7 +14,7 @@
 </div>
 
 <div class="table-wrap">
-    <form method="get" action="<c:url value='/loans/history' />" style="margin:0;">
+    <form accept-charset="UTF-8" method="get" action="<c:url value='/loans/history' />" style="margin:0;">
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
             <select name="memberId" class="form-select" style="min-width:200px;">
                 <option value="">All members</option>

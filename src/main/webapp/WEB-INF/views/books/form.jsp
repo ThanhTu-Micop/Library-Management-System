@@ -22,7 +22,7 @@
 <p class="page-subtitle mt-2">Enter the book details, publisher, category, authors, and publication year.</p>
 
 <div class="form-card">
-    <form method="post" action="${formAction}" data-guard>
+    <form accept-charset="UTF-8" method="post" action="${formAction}" data-guard>
         <input type="hidden" name="_csrf" value="<c:out value='${csrfToken}' />" />
 
         <div class="form-group">

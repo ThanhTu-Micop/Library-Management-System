@@ -28,7 +28,7 @@
         <p class="form-control"><c:out value="${copyCount}" default="0" /></p>
     </div>
 
-    <form method="post" action="<c:url value='/books/delete' />" data-guard>
+    <form accept-charset="UTF-8" method="post" action="<c:url value='/books/delete' />" data-guard>
         <input type="hidden" name="bookId" value="<c:out value='${book.bookId}' />" />
         <input type="hidden" name="_csrf" value="<c:out value='${csrfToken}' />" />
         <div class="form-actions">

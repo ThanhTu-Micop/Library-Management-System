@@ -6,6 +6,10 @@
 
 BEGIN;
 
+-- Accent-insensitive search for Vietnamese titles and names (E05).
+-- The extension is trusted, so the application role can install it.
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 DROP TABLE IF EXISTS book_authors;
 DROP TABLE IF EXISTS loans;
 DROP TABLE IF EXISTS book_copies;

@@ -6,7 +6,7 @@
 | Database | PostgreSQL 16.15 |
 | Schema file | `src/main/resources/db/schema.sql` |
 | Seed file | `src/main/resources/db/seed.sql` |
-| Last updated | 2026-10-26 |
+| Last updated | 2026-10-27 |
 | Status | Implemented and applied to `library_db` and `library_test` |
 
 ## 1. Entity-relationship model
@@ -80,6 +80,20 @@ The schema creates 11 named search indexes plus inline unique-constraint indexes
 | `loans` | `idx_loans_active_partial_unique` | One active loan per copy |
 | `loans` | `idx_loans_active_due_partial` | Overdue scans over active loans |
 
+### 5.1 Accent-insensitive search
+
+`schema.sql` installs the PostgreSQL `unaccent` extension with `CREATE EXTENSION IF NOT EXISTS unaccent;`. The extension is trusted, so the least-privilege application role `library_app` can install it. If the schema is applied to an existing database without rerunning the full script, run `CREATE EXTENSION IF NOT EXISTS unaccent;` once.
+
+The DAO search clauses normalize both the stored column and the caller-supplied pattern, for example:
+
+```sql
+unaccent(b.title) ILIKE unaccent(?)
+```
+
+As a result, `Chí Phèo`, `Chi Pheo`, and `CHÍ PHÈO` all match the same book. The same treatment is applied to the book author-name filter and to member full names, author names, publisher names, and category names. ISBN and member-code comparisons are not accent-normalized because the identifiers are ASCII.
+
+The JSP search forms declare `accept-charset="UTF-8"`. POST request decoding still requires Person 2 to call `request.setCharacterEncoding("UTF-8")` before reading parameters; Tomcat 10 decodes GET query strings as UTF-8 by default.
+
 ## 6. Seed data
 
 `seed.sql` is destructive and demo-only. It wraps cleanup and inserts in one transaction, truncates all application tables with `RESTART IDENTITY CASCADE`, and uses dates relative to `CURRENT_DATE` so the demo never becomes stale.
@@ -135,10 +149,11 @@ psql -h 127.0.0.1 -U library_app -d library_db -v ON_ERROR_STOP=1 -f src/main/re
 
 Repeat with `-d library_test` for the test database. `schema.sql` and `seed.sql` both wrap their work in `BEGIN; ... COMMIT;`.
 
-## 10. Verification evidence (2026-10-26)
+## 10. Verification evidence (2026-10-27)
 
 - `schema.sql` and `seed.sql` applied successfully to both `library_db` and `library_test`.
-- Both databases contain 8 application tables and 14 named indexes.
+- Both databases contain 8 application tables, 11 named indexes, and 3 inline unique-constraint indexes (`books_isbn_key`, `book_copies_copy_code_key`, `members_member_code_key`).
+- The `unaccent` extension is installed in both databases. On `library_db`, `unaccent('Chí Phèo')` returns `Chi Pheo`, and both `%Chi Pheo%` and `%Chí Phèo%` return `book_id 2` (`Chí Phèo`).
 - Seed counts matched the expected `3 / 4 / 4 / 4 / 8 / 3 / 3 / 4` for publishers, categories, authors, books, copies, members, loans, and book-author links.
 - Constraint checks passed on both databases:
   - Duplicate category name differing only by case: rejected.
@@ -147,6 +162,7 @@ Repeat with `-d library_test` for the test database. `schema.sql` and `seed.sql`
   - ISBN length 12: rejected; lengths 13 and 20: accepted.
   - Due date `loan_date + 15`: rejected.
   - Second active loan for the same copy: rejected.
+- The standalone DAO suite passes 124/124 tests against `library_test`, including 7 accent-insensitive search tests in `DiacriticSearchTest`.
 - The full read-only verification queries and command results are recorded in `docs/runtime-toolchain-audit.md`.
 
 ## 11. Related files

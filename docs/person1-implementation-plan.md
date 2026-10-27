@@ -7,10 +7,10 @@
 | Scope | Database, SQL, models, JDBC DAO, DAO tests, JSP/UI, CSS/JS, DB/UI docs |
 | Out of scope | `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, Controllers, Services, filters, transaction boundaries |
 | Runtime baseline | JDK 17, Maven 3.9.16, Tomcat 10.1.61, PostgreSQL 16.15, pgJDBC 42.7.14, JSTL 3.0.1 |
-| Last updated | 2026-10-26 |
+| Last updated | 2026-10-27 |
 | Evidence policy | Never claim build, test, JSP, or deployment success without actual command output |
 
-> **Implementation note (2026-10-26):** This plan has been implemented for the Person 1 scope. Current evidence is recorded in [`docs/runtime-toolchain-audit.md`](runtime-toolchain-audit.md): 37 main Java files, 8 test files, 39/39 standalone DAO tests, 15/15 JSPs compiled by `JspC`, schema/seed applied to both databases, and 214 EL property references checked. The unchecked boxes below preserve the original work-breakdown checklist; they are not a claim that the work is pending. Maven, WAR, deployment, Controllers, Services, and HTTP flows remain Person 2 blockers.
+> **Implementation note (2026-10-27):** This plan has been implemented for the Person 1 scope. Current evidence is recorded in [`docs/runtime-toolchain-audit.md`](runtime-toolchain-audit.md): 37 main Java files, 13 test files, 124/124 standalone DAO tests, 15/15 JSPs compiled by `JspC`, schema/seed applied to both databases, and 214 EL property references checked. The unchecked boxes below preserve the original work-breakdown checklist; they are not a claim that the work is pending. Maven, WAR, deployment, Controllers, Services, and HTTP flows remain Person 2 blockers.
 
 ## 1. Locked Decisions
 
@@ -33,16 +33,17 @@
 - 16 model, enum, and criteria files.
 - 9 DAO interfaces and 9 JDBC DAO implementations, including `BookAuthorDAO` and `JdbcBookAuthorDAO`.
 - `DatabaseConnection`, `AppConfig`, `DataAccessException`.
-- 7 DAO test classes plus `TestDatabase`.
+- 12 DAO test classes plus `TestDatabase`.
 - 15 JSP views, `app.css`, and `app.js`.
-- `schema.sql`, `seed.sql`, and 5 docs.
+- `schema.sql`, `seed.sql`, 6 docs, and 2 test-runner scripts.
 
 ### Verification evidence
 
-- Main Java sources compiled with `javac --release 17`: 37 files, 37 class files.
-- Test sources compiled: 8 files, 8 class files.
-- Standalone JUnit Platform Console: 39 tests found, 39 successful, 0 failed, exit code 0.
-- Schema and seed applied to both `library_db` and `library_test`; 8 tables, 14 named indexes, and seed counts `3/4/4/4/8/3/3/4` verified.
+- Main Java sources compiled with `javac --release 17 -encoding UTF-8`: 37 files, 37 class files.
+- Test sources compiled with `javac --release 17 -encoding UTF-8`: 13 files, 13 class files.
+- Standalone JUnit Platform Console: 124 tests found, 124 successful, 0 failed, exit code 0 (39 original + 78 merged + 7 diacritic tests).
+- Schema and seed applied to both `library_db` and `library_test`; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes, and seed counts `3/4/4/4/8/3/3/4` verified.
+- The `unaccent` extension is installed in both databases; `Chí Phèo` and `Chi Pheo` both return the same book through the DAO search.
 - Seven rollback-safe constraint probes passed on both databases: category/email case-insensitive duplicates, blank email, ISBN 12/13/20, 15-day due date, and duplicate active loan.
 - All 15 JSPs compiled with Tomcat `JspC` and JSTL 3.0.1: 15 Java files, 15 class files, 0 errors, exit code 0.
 - Static EL check: 320 expressions, 214 model property references, no missing property after replacing invalid `hasNext`/`hasPrevious` pagination properties with `first`/`last`.
@@ -627,3 +628,4 @@ Person 2 must provide:
 |---|---|
 | 2026-10-25 | Created the standalone Person 1 implementation plan after the read-only review and decision freeze. |
 | 2026-10-26 | Implemented the Person 1 scope and recorded standalone evidence: compilation, 39/39 DAO tests, `JspC`, EL checks, schema/seed, and constraint probes. Maven/WAR/HTTP remain Person 2 blockers. |
+| 2026-10-27 | Merged the extended DAO suite, fixed eight test-side defects, added accent-insensitive search with `unaccent`, added 7 diacritic tests, and re-verified 124/124 tests plus `JspC` and 48 manual relation probes. |

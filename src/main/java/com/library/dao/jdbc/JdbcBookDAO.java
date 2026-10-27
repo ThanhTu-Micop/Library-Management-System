@@ -194,8 +194,8 @@ public class JdbcBookDAO implements BookDAO {
     private void appendSearchFilters(StringBuilder countSb, StringBuilder dataSb,
                                      BookSearchCriteria criteria, List<Object> params) {
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
-            countSb.append(" AND (b.title ILIKE ? OR b.isbn ILIKE ?)");
-            dataSb.append(" AND (b.title ILIKE ? OR b.isbn ILIKE ?)");
+            countSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
+            dataSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
             String like = likePattern(criteria.getKeyword());
             params.add(like);
             params.add(like);
@@ -213,7 +213,7 @@ public class JdbcBookDAO implements BookDAO {
         if (criteria.getAuthorName() != null && !criteria.getAuthorName().isBlank()) {
             String clause = " AND EXISTS (SELECT 1 FROM book_authors ba " +
                     "JOIN authors a ON a.author_id = ba.author_id " +
-                    "WHERE ba.book_id = b.book_id AND a.name ILIKE ?)";
+                    "WHERE ba.book_id = b.book_id AND unaccent(a.name) ILIKE unaccent(?))";
             countSb.append(clause);
             dataSb.append(clause);
             params.add(likePattern(criteria.getAuthorName()));

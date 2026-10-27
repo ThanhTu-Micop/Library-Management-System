@@ -63,8 +63,8 @@ public class JdbcAuthorDAO implements AuthorDAO {
         List<Object> params = new ArrayList<>();
 
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
-            countSb.append(" AND name ILIKE ?");
-            dataSb.append(" AND name ILIKE ?");
+            countSb.append(" AND unaccent(name) ILIKE unaccent(?)");
+            dataSb.append(" AND unaccent(name) ILIKE unaccent(?)");
             params.add(likePattern(criteria.getKeyword()));
         }
 

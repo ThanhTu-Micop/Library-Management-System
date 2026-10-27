@@ -205,8 +205,8 @@ public class JdbcMemberDAO implements MemberDAO {
     private void appendFilters(StringBuilder countSb, StringBuilder dataSb,
                                MemberSearchCriteria criteria, List<Object> params) {
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
-            countSb.append(" AND (m.full_name ILIKE ? OR m.member_code ILIKE ?)");
-            dataSb.append(" AND (m.full_name ILIKE ? OR m.member_code ILIKE ?)");
+            countSb.append(" AND (unaccent(m.full_name) ILIKE unaccent(?) OR m.member_code ILIKE ?)");
+            dataSb.append(" AND (unaccent(m.full_name) ILIKE unaccent(?) OR m.member_code ILIKE ?)");
             String like = likePattern(criteria.getKeyword());
             params.add(like);
             params.add(like);

@@ -14,7 +14,7 @@
 </div>
 
 <div class="table-wrap">
-    <form method="get" action="<c:url value='/books' />" style="margin:0;">
+    <form accept-charset="UTF-8" method="get" action="<c:url value='/books' />" style="margin:0;">
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
             <input type="text" name="keyword" class="form-control" placeholder="Search by ISBN or title"
                    value="<c:out value='${criteria.keyword}' default='' />" style="min-width:260px;">

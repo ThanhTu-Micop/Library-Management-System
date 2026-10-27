@@ -17,16 +17,16 @@ The mapping is intentionally evidence-based:
 
 | Item | Value |
 |---|---|
-| Last reviewed | 2026-10-26 |
+| Last reviewed | 2026-10-27 |
 | Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and docs present; no Maven build or deployment descriptors |
-| Git state | Initialized on `main`; see `git log` for the latest commit |
+| Git state | `main` plus feature branch `feature/test-suite-and-vietnamese-search`; see `git log` for the latest commit |
 | Code evidence audit | 59 `file:line` references resolved; 43 semantic spot checks passed; 9/9 DAO interface/implementation pairs matched; 3 locking SQL queries confirmed |
-| Java source inspected | 37 main files, 8 test files |
-| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 4 enums, 10 test-only lambdas, 0 `switch`, 2 varargs methods |
+| Java source inspected | 37 main files, 13 test files |
+| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 4 enums, 43 test-only assertion lambdas, 0 `switch`, 2 varargs methods |
 | JSP/CSS/JS source inspected | 15 JSPs, `app.css`, `app.js` |
 | SQL source inspected | `schema.sql`, `seed.sql` |
-| Compilation evidence | `javac --release 17`: 37/37 main and 8/8 test files compiled |
-| Test evidence | Standalone JUnit Platform Console: 39/39 DAO tests pass |
+| Compilation evidence | `javac --release 17 -encoding UTF-8`: 37/37 main and 13/13 test files compiled |
+| Test evidence | Standalone JUnit Platform Console: 124/124 DAO tests pass |
 | JSP evidence | Tomcat `JspC`: 15/15 JSPs compiled with 0 errors |
 | Course material files in workspace | None |
 
@@ -75,7 +75,7 @@ Rows referencing service, controller, filter, or `web.xml` code are documented h
 
 ## Code Evidence Index
 
-This table is the short answer for an oral review: it points to the exact file and line that demonstrates each Java feature. Line numbers refer to the 2026-10-26 snapshot; if the code moves, cite the class or method name instead, because that is the stable reference.
+This table is the short answer for an oral review: it points to the exact file and line that demonstrates each Java feature. Line numbers refer to the 2026-10-27 snapshot; if the code moves, cite the class or method name instead, because that is the stable reference.
 
 Path prefixes used below:
 
@@ -104,10 +104,11 @@ Path prefixes used below:
 | 6. Enum | Enumeration | `main/model/enums/LoanStatus.java:8-10`; `main/model/enums/CopyStatus.java:9-12`; `main/model/enums/MemberStatus.java:6-8` | Status values are type-safe constants and mirror database `CHECK` constraints. |
 | 7. Generic | Generic class and generic parameter | `main/model/Page.java:15`, `:17`, `:23`; `main/dao/BookDAO.java:26` | `Page<T>` and `List<T>` reuse one pagination type; `Page<Book>` binds `T` to `Book`. |
 | 7. Collection | `ArrayList`, `List`, `Set` | `main/model/Page.java:24`; `main/model/Book.java:28`; `main/dao/jdbc/JdbcAuthorDAO.java:63` and `:82`; `main/dao/jdbc/JdbcBookAuthorDAO.java:60` | `ArrayList` makes a defensive copy and accumulates rows; `List` is the return abstraction; `LinkedHashSet` removes duplicate author IDs. |
-| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java:103-104`; `test/dao/JdbcBookCopyDAOTest.java:132-133`; `test/dao/JdbcLoanDAOTest.java:110-111` | Ten lambdas exist, all passed to JUnit `assertThrows`/`assertDoesNotThrow`; no production lambda was added. |
+| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java:103-104`; `test/dao/JdbcBookCopyDAOTest.java:132-133`; `test/dao/JdbcLoanDAOTest.java:110-111`; `test/dao/TransactionIsolationTest.java` | 43 lambdas exist across the test suite, all passed to JUnit `assertThrows`/`assertDoesNotThrow`; no production lambda was added. |
 | 8. GUI | Java GUI is not applicable | `web/WEB-INF/views/books/list.jsp:2`, `:62`, `:64`; `web/assets/js/app.js:4-5` | The UI is JSP/JSTL/EL plus vanilla JavaScript; there is no Swing, AWT, or JavaFX. |
 | 9. JDBC | `DriverManager` and `Connection` | `main/config/DatabaseConnection.java:73`; `test/dao/support/TestDatabase.java:52`; `main/dao/BookDAO.java:13-14` | `DriverManager.getConnection` creates the connection; the caller passes it in; DAOs never commit, roll back, or close it. |
 | 9. JDBC | `PreparedStatement` and `ResultSet` | `main/dao/jdbc/JdbcBookDAO.java:59-61`; `main/dao/jdbc/JdbcMemberDAO.java:114` | SQL uses `?` placeholders, `setInt`/`setString` bind values, and `while (rs.next())` maps rows. |
+| 9. JDBC | Accent-insensitive parameterized search | `main/dao/jdbc/JdbcBookDAO.java:197-198` and `:216`; `main/dao/jdbc/JdbcMemberDAO.java:208-209`; `src/main/resources/db/schema.sql:11`; `test/dao/DiacriticSearchTest.java:69-164` | `unaccent()` normalizes both the column and the `?` pattern, so `Chí Phèo`, `Chi Pheo`, and `CHÍ PHÈO` match. The pattern remains a bound parameter, and LIKE wildcards are escaped. |
 | 9. JDBC | Generated keys | `main/dao/jdbc/JdbcBookDAO.java:110` and `:124`; `main/dao/jdbc/JdbcLoanDAO.java:80` and `:95` | `RETURN_GENERATED_KEYS` plus `getGeneratedKeys()` writes the database ID back into the model. |
 | 9. JDBC | Row locking | `main/dao/jdbc/JdbcBookCopyDAO.java:31`; `main/dao/jdbc/JdbcLoanDAO.java:49` and `:53` | Three `SELECT ... FOR UPDATE` queries lock a copy or loan row inside the caller's transaction. |
 | 9. JDBC | Batch execution | `main/dao/jdbc/JdbcBookAuthorDAO.java:78` and `:80` | `addBatch()` and `executeBatch()` insert all author links for a book. |
@@ -132,7 +133,7 @@ If the teacher asks "which part of the code demonstrates the Java concept?", ope
 ### Claims to avoid
 
 - Do not say Java GUI is implemented; there is no Swing/AWT/JavaFX code.
-- Do not say lambdas are used in production; all ten are in JUnit tests.
+- Do not say lambdas are used in production; all 43 are in JUnit tests.
 - Do not say standalone arrays are used; arrays appear only through varargs.
 - Do not say there is a large inheritance hierarchy; only `DataAccessException extends RuntimeException` exists.
 - Do not say DAOs manage transactions; they receive a caller-owned `Connection` and never commit or roll back. The service layer that owns transaction boundaries belongs to Person 2.
@@ -140,7 +141,7 @@ If the teacher asks "which part of the code demonstrates the Java concept?", ope
 
 ## Source Pattern Inventory
 
-The tables below record the concrete patterns found in the 37 main and 8 test Java files during the 2026-10-26 inspection. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
+The tables below record the concrete patterns found in the 37 main and 13 test Java files during the 2026-10-27 inspection. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
 
 ### Inventory summary
 
@@ -151,7 +152,7 @@ The tables below record the concrete patterns found in the 37 main and 8 test Ja
 | Generated keys | 7 `getGeneratedKeys()` call sites |
 | Row-locking SQL | 3 `SELECT ... FOR UPDATE` queries: `JdbcBookCopyDAO.FIND_BY_ID_FOR_UPDATE`, `JdbcLoanDAO.FIND_BY_ID_FOR_UPDATE`, and `JdbcLoanDAO.FIND_ACTIVE_BY_COPY_ID` |
 | Varargs / implicit arrays | 2 methods: `JdbcDashboardDAO.count(Connection, String, Object...)`, `TestDatabase.firstNonBlank(String...)` |
-| Lambda expressions | 10, all in JUnit assertions; none in main source |
+| Lambda expressions | 43, all in JUnit assertions across the original, merged, and diacritic test files; none in main source |
 | `switch` statements | 0; conditions use `if` and ternary operators |
 | Java GUI classes | 0 Swing/AWT/JavaFX classes; the UI is JSP/HTML/CSS/vanilla JavaScript |
 
@@ -189,7 +190,7 @@ The tables below record the concrete patterns found in the 37 main and 8 test Ja
 
 | File(s) | Patterns present |
 |---|---|
-| `JdbcBookDAOTest.java`, `JdbcBookCopyDAOTest.java`, `JdbcBookAuthorDAOTest.java`, `JdbcLoanDAOTest.java`, `JdbcMemberDAOTest.java`, `JdbcDashboardDAOTest.java`, `JdbcReferenceDAOTest.java` | JUnit 5 `@Test`; static assertion imports; `assertThrows`/`assertDoesNotThrow` with lambdas; try-with-resources; generated IDs; fixed `LocalDate` values; `List.of`/`Arrays.asList`; SQLState assertions; `resetAll`/`seedReferenceData` setup |
+| `JdbcBookDAOTest.java`, `JdbcBookCopyDAOTest.java`, `JdbcBookAuthorDAOTest.java`, `JdbcLoanDAOTest.java`, `JdbcMemberDAOTest.java`, `JdbcDashboardDAOTest.java`, `JdbcReferenceDAOTest.java`, `LoanBusinessLogicTest.java`, `DataConsistencyTest.java`, `CrossTableSynchronizationTest.java`, `TransactionIsolationTest.java`, `DiacriticSearchTest.java` | JUnit 5 `@Test`; static assertion imports; `assertThrows`/`assertDoesNotThrow` with lambdas; try-with-resources; generated IDs; fixed `LocalDate` values; `List.of`/`Arrays.asList`; SQLState assertions; `resetAll`/`seedReferenceData` setup; two-connection concurrency and lock-timeout tests; accent-insensitive search assertions |
 | `dao/support/TestDatabase.java` | Static utility class and private constructor; environment precedence; `_test` URL guard; `Properties`; `DriverManager`; `String...` varargs; `Statement`; `TRUNCATE ... RESTART IDENTITY CASCADE`; reference-data seeding |
 
 ### UI and SQL sources
@@ -198,7 +199,7 @@ The tables below record the concrete patterns found in the 37 main and 8 test Ja
 |---|---|
 | `WEB-INF/views/**/*.jsp` | JSTL `jakarta.tags.core` and `jakarta.tags.functions`; EL expressions; `c:import`/`c:param`; `c:url`; `c:forEach`; `c:if`; `c:choose`; `c:out`; `fn:length`; no Java GUI or scriptlets |
 | `assets/js/app.js`, `assets/css/app.css` | Vanilla JavaScript IIFE with `'use strict'`; DOM queries and event listeners; confirm dialog; timeout; CSS custom properties, flex/grid layout, responsive rules, and status classes; no framework |
-| `db/schema.sql`, `db/seed.sql` | DDL, foreign keys, CHECK constraints, unique/partial indexes, `BEGIN`/`COMMIT`, `TRUNCATE ... RESTART IDENTITY CASCADE`; `CURRENT_DATE` appears in the schema default and seed data, not in DAO SQL |
+| `db/schema.sql`, `db/seed.sql` | DDL, foreign keys, CHECK constraints, unique/partial indexes, `CREATE EXTENSION IF NOT EXISTS unaccent`, `BEGIN`/`COMMIT`, `TRUNCATE ... RESTART IDENTITY CASCADE`; `CURRENT_DATE` appears in the schema default and seed data, not in DAO SQL |
 
 ### Patterns deliberately not present
 
@@ -243,7 +244,7 @@ Java GUI is **Not applicable**. The agreed UI technology is JSP/HTML/CSS/vanilla
 
 ### Topic 9 — JDBC
 
-JDBC is the core of Person 1's implementation. Evidence includes `DriverManager`, `Connection`, `PreparedStatement`, `ResultSet`, `SQLException`, generated-key retrieval, caller-owned connections, batch inserts, `FOR UPDATE` queries, and parameterized search/count queries.
+JDBC is the core of Person 1's implementation. Evidence includes `DriverManager`, `Connection`, `PreparedStatement`, `ResultSet`, `SQLException`, generated-key retrieval, caller-owned connections, batch inserts, `FOR UPDATE` queries, and parameterized search/count queries. The search DAOs also demonstrate database-function integration: `unaccent()` normalizes Vietnamese diacritics while the keyword remains a bound `?` parameter, which prevents SQL injection. `DiacriticSearchTest` verifies accented, unaccented, uppercase, and partial input, plus LIKE-wildcard escaping.
 
 ## Code Annotation Policy
 

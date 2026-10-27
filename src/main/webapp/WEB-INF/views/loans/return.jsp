@@ -14,7 +14,7 @@
         <div class="empty-state">There are no active loans to return.</div>
     </c:if>
     <c:if test="${not empty activeLoans}">
-        <form method="post" action="<c:url value='/loans/return' />" data-guard>
+        <form accept-charset="UTF-8" method="post" action="<c:url value='/loans/return' />" data-guard>
             <input type="hidden" name="_csrf" value="<c:out value='${csrfToken}' />" />
 
             <div class="form-group">

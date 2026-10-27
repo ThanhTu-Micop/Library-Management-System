@@ -16,7 +16,8 @@ src/main/resources/db/{schema.sql,seed.sql}
 src/main/webapp/WEB-INF/views/{books,members,loans,common,errors}
 src/main/webapp/assets/{css,js}
 src/test/java/com/library/{dao,dao/support}
-docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan}.md
+scripts/{run-tests.ps1,run-tests.sh}
+docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,test-suite-report}.md
 ```
 
 ## 2. Cơ sở dữ liệu (Person 1)
@@ -40,6 +41,12 @@ psql -h 127.0.0.1 -p 5432 -U library_app -d library_test -v ON_ERROR_STOP=1 -f s
 
 Mật khẩu thực không được lưu trong kho lưu chính, chỉ ở bên ngoài workspace (`C:\Users\BINHND\dev\secrets\library_app.password`).
 
+`schema.sql` tự chạy `CREATE EXTENSION IF NOT EXISTS unaccent;`. Extension này đi kèm PostgreSQL (`postgresql-contrib`) và đã được kiểm tra là cài được bằng vai trò `library_app`. Nếu áp dụng lên database đã tồn tại mà không chạy lại toàn bộ schema, hãy chạy riêng:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS unaccent;
+```
+
 ### 2.2 Biến môi trường mà DAO đọc
 
 | Biến | Ý nghĩa | Mặc định |
@@ -51,13 +58,16 @@ Mật khẩu thực không được lưu trong kho lưu chính, chỉ ở bên n
 
 `DatabaseConnection` đọc từ biến môi trường và (tuỳ chọn) file mật khẩu bên ngoài; không giữ hằng mật khẩu trong mã nguồn.
 
-### 2.3 Các則 ràng buộc quan trọng (database enforcement)
+Riêng test DAO dùng `TestDatabase`, đọc `TEST_DB_URL` trước rồi mới đến `DB_URL`; URL phải chứa `_test` để tránh xoá nhầm database phát triển.
+
+### 2.3 Các ràng buộc quan trọng (database enforcement)
 
 - `books.isbn`: unique, 13–20 ký tự sau khi cắt khoảng trắng (`CHECK char_length(btrim(isbn)) BETWEEN 13 AND 20`).
 - `loans.due_date = loan_date + 14` (khoảng thời gian mượn cố định 14 ngày).
 - Một bản sao chỉ có tối đa một phiếu mượn đang hoạt động (`idx_loans_active_partial_unique`).
 - Trạng thái `loans.status` (`ACTIVE`/`RETURNED`) nhất quán với `return_date`.
 - 7 khóa ngoại: `ON DELETE RESTRICT` cho người xuất bản, thể loại, bản sao, thành viên, tác giả; `ON DELETE CASCADE` từ sách sang liên kết tác giả.
+- Tìm kiếm sách/thành viên không phân biệt dấu tiếng Việt: `unaccent(title) ILIKE unaccent(?)`, nên `Chí Phèo`, `Chi Pheo`, `CHÍ PHÈO` đều khớp.
 - Không có dòng mồ côi sau các bài kiểm tra ràng buộc (xem mục kiểm tra bên dưới).
 
 ## 3. Xây dựng và kiểm thử (độc lập, không Maven)
@@ -65,11 +75,11 @@ Mật khẩu thực không được lưu trong kho lưu chính, chỉ ở bên n
 ### 3.1 Biên dịch
 
 ```powershell
-javac --release 17 -d <main-out> -cp postgresql-42.7.14.jar (src/main/java/**/*.java)
-javac --release 17 -d <test-out> -cp "<main-out>;postgresql-42.7.14.jar" (src/test/java/**/*.java)
+javac --release 17 -encoding UTF-8 -d <main-out> -cp postgresql-42.7.14.jar (src/main/java/**/*.java)
+javac --release 17 -encoding UTF-8 -d <test-out> -cp "<main-out>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" (src/test/java/**/*.java)
 ```
 
-Kết quả lần kiểm chứng gần nhất: **37/37 main**, **12/12 test** file biên dịch thành công (8 file gốc + 4 file test mở rộng trong thư mục kiểm thử merge).
+Kết quả lần kiểm chứng gần nhất: **37/37 main**, **13/13 test** file biên dịch thành công (8 file gốc + 5 file test mới, gồm 4 file test merge và `DiacriticSearchTest`).
 
 ### 3.2 Kiểm thử DAO (JUnit Platform Console, không Maven/Surefire)
 
@@ -77,7 +87,7 @@ Kết quả lần kiểm chứng gần nhất: **37/37 main**, **12/12 test** fi
 java -jar junit-platform-console-standalone-1.14.4.jar execute -cp "<main-out>;<test-out>;postgresql-42.7.14.jar" --scan-classpath <test-out> --disable-banner
 ```
 
-Kết quả: **118/118 test thành công** (39 test DAO gốc + 78 test mở rộng từ 4 class test mới), 0 thất bại.
+Kết quả: **124/124 test thành công** (39 test DAO gốc + 78 test mở rộng + 7 test tìm kiếm tiếng Việt), 0 thất bại.
 
 ### 3.3 Kiểm tra thủ công PK/FK/quan hệ (48 probe)
 
@@ -99,12 +109,13 @@ Kết quả: **48/48 PASS**, `PSQL_EXIT=0`; `library_test` quay lại trạng th
 
 ### 3.4 Chạy toàn bộ kiểm thử (script tiện ích)
 
-Trong thư mục kiểm thử merge có sẵn script `scripts/run-tests.sh` (Linux/macOS) và `scripts/run-tests.ps1` (Windows) để chạy liên tiếp:
-1. Biên dịch main + test (`javac --release 17`)
-2. Chạy JUnit Platform Console (`--scan-classpath build/test`)
-3. Chạy manual PK/FK/relation probes (`psql -f .../manual-relation-test.sql`)
+Trong repo có sẵn `scripts/run-tests.sh` (Linux/macOS) và `scripts/run-tests.ps1` (Windows) để chạy liên tiếp:
+1. Tải JUnit Platform Console `1.14.4` và pgJDBC `42.7.14` vào `lib/` (chỉ lần đầu; `lib/` đã nằm trong `.gitignore`).
+2. Biên dịch main + test với `javac --release 17 -encoding UTF-8`.
+3. Chạy JUnit Platform Console (`--scan-classpath build/test`).
+4. Script không chạy manual SQL probe; chạy riêng lệnh `psql` ở mục 3.3.
 
-Script tự quét classpath, không cần khai báo từng class test.
+Bộ lọc `-TestClassFilter` / tham số đầu tiên nhận glob, ví dụ `*TransactionIsolation*`; script tự chuyển sang regex cho JUnit. Script tự quét classpath, không cần khai báo từng class test.
 
 ## 4. Giao diện (Person 1)
 
@@ -145,3 +156,4 @@ Tất cả JSP đã biên dịch bằng Tomcat `JspC` (15/15, 0 lỗi) và qua k
 - `docs/java-concepts-mapping.md` — ánh xạ khái niệm Java với mã nguồn (`file:dòng`) và chỉ dẫn trả lời khi dạy hỏi.
 - `docs/implementation-plan.md` — hợp đồng DAO, quy tắc transaction, kế hoạch UI/UX, Definition of Done.
 - `docs/person1-implementation-plan.md` — kế hoạch chi tiết Person 1 (gốc).
+- `docs/test-suite-report.md` — báo cáo bộ test mở rộng (logic nghiệp vụ, data consistency, cross-table, transaction) và kết quả chạy thực tế.

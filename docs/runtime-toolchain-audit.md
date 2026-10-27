@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Project | Library Management System |
-| Audit date | 2026-10-26 |
-| Report version | 3.0 |
+| Audit date | 2026-10-27 |
+| Report version | 3.1 |
 | Auditor scope | Person 1: database, SQL, JDBC/DAO, and UI/UX |
 | Workspace | `C:\Users\BINHND\Desktop\Library-Management-System-main\Library-Management-System-main\library-management-system` |
 | Audit type | Environment inspection plus Person 1 implementation verification |
@@ -32,7 +32,7 @@
 - 37 main Java source files, compiled to 37 class files.
 - 9 DAO interfaces and 9 JDBC implementations, including `BookAuthorDAO` and `JdbcBookAuthorDAO`.
 - 9 model classes, 4 enums, and 3 search-criteria classes.
-- 12 test source files with 11 DAO test classes; 118 tests pass under the standalone JUnit console.
+- 13 test source files with 12 DAO test classes; 124 tests pass under the standalone JUnit console.
 - 15 JSP files, all compiled by Tomcat `JspC`.
 - `schema.sql`, `seed.sql`, CSS, and vanilla JavaScript.
 - Updated database, implementation, Java-concept, and audit documentation.
@@ -100,7 +100,7 @@ Person 1 verification used actual command execution:
 | Tomcat | `10.1.61` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61` | `version.bat`; `JspC` compilation |
 | PostgreSQL | `16.15` | `C:\Users\BINHND\dev\pgsql-16.15` | `psql --version`; schema/seed and constraint checks |
 | pgJDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar` | Compiled and executed DAO tests |
-| JUnit | `5.14.4` console standalone | Outside the workspace | 118/118 DAO tests passed |
+| JUnit | `5.14.4` console standalone | Outside the workspace | 124/124 DAO tests passed |
 | JSTL | `3.0.1` API + implementation | Outside the workspace | Used by Tomcat `JspC` |
 | Ant | `1.10.15` | Outside the workspace | Required by `JspC` at build time |
 
@@ -158,13 +158,13 @@ MAIN_CLASS_FILES=37
 ```
 
 ```powershell
-javac --release 17 -encoding UTF-8 -cp "<main-classes>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" -d <temp>\lms-test-classes (8 test .java files)
+javac --release 17 -encoding UTF-8 -cp "<main-classes>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" -d <temp>\lms-test-classes (13 test .java files)
 ```
 
 ```text
 TEST_COMPILE_OK
-TEST_SOURCE_FILES=8
-TEST_CLASS_FILES=8
+TEST_SOURCE_FILES=13
+TEST_CLASS_FILES=13
 ```
 
 `--release 17` targets class-file major version 61 and prevents accidental use of newer JDK APIs.
@@ -175,13 +175,15 @@ The test database URL was supplied with `TEST_DB_URL=jdbc:postgresql://127.0.0.1
 
 ```text
 [         0 containers failed     ]
-[       118 tests found           ]
-[       118 tests successful      ]
+[       124 tests found           ]
+[       124 tests successful      ]
 [         0 tests failed          ]
 EXIT_CODE=0
 ```
 
-The 118 tests cover book CRUD/search/filters, member uniqueness/search/active-loan counts, loan borrow/return/overdue/history queries, dashboard metrics, book-copy lifecycle, book-author replacement, reference data, and extended boundary/constraint tests from the merge test suite.
+The 124 tests cover book CRUD/search/filters, member uniqueness/search/active-loan counts, loan borrow/return/overdue/history queries, dashboard metrics, book-copy lifecycle, book-author replacement, reference data, extended boundary/constraint tests from the merge test suite, and accent-insensitive Vietnamese search.
+
+The initial run of the merged suite exposed eight test-side defects (two category inserts reused seeded names; five raw-SQL RESTRICT tests asserted `DataAccessException` instead of `SQLException`; one lock-timeout test omitted a rollback). The tests were corrected before the 124/124 result was recorded. No production DAO or schema behavior was changed to make these eight tests pass.
 
 This is **standalone JUnit evidence**, not a Maven/Surefire result.
 
@@ -223,9 +225,12 @@ book_copies       | 8          | 8
 members           | 3          | 3
 loans             | 3          | 3
 book_authors      | 4          | 4
+extensions        | unaccent   | unaccent
 ```
 
 `named_indexes` counts the `CREATE INDEX` statements (search indexes). In addition, inline unique constraints produce `books_isbn_key`, `book_copies_copy_code_key`, and `members_member_code_key`. Three indexes that duplicated those unique constraints (`idx_books_isbn`, `idx_book_copies_copy_code`, `idx_members_member_code`) were removed (see `E08`).
+
+The `unaccent` extension is installed by `schema.sql` in both databases. It is used by the DAO search clauses for book title, author name, member full name, category name, and publisher name.
 
 Constraint probes ran inside a transaction that was rolled back:
 
@@ -240,6 +245,20 @@ second active loan for the same copy: rejected
 ```
 
 The same seven checks passed on both `library_db` and `library_test`; no probe rows were committed.
+
+### 4.5.1 Accent-insensitive search
+
+The `unaccent` extension was installed in both databases, and the DAO search clauses normalize both the column and the pattern. Verified on `library_db` with the real `Chí Phèo` row:
+
+```text
+unaccent('Chí Phèo') = 'Chi Pheo'
+SELECT ... WHERE unaccent(title) ILIKE unaccent('%Chi Pheo%')   -> book_id 2, Chí Phèo
+SELECT ... WHERE unaccent(title) ILIKE unaccent('%Chí Phèo%')   -> book_id 2, Chí Phèo
+```
+
+`DiacriticSearchTest` adds 7 DAO tests for accented input, unaccented input, uppercase input, partial input, author names, member names, and LIKE wildcard escaping.
+
+The JSP search forms now declare `accept-charset="UTF-8"`, but POST request decoding still requires Person 2 to call `request.setCharacterEncoding("UTF-8")` before reading parameters. Tomcat 10 decodes GET query strings as UTF-8 by default.
 
 ### 4.5.1 Manual PK, FK, and relation matrix
 
@@ -257,7 +276,7 @@ The same seven checks passed on both `library_db` and `library_test`; no probe r
 | `CHECK` constraints | 11 | Short/long ISBN, invalid year, invalid statuses, wrong due date, invalid return dates, and blank email are rejected with `23514` (long ISBN with `22001`) |
 | Orphan check | 1 | All seven relations contain zero orphan rows after the probes |
 
-Actual result on `library_test` (2026-10-26):
+Actual result on `library_test` (2026-10-27):
 
 ```text
 status | tests
@@ -323,7 +342,7 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 | JDK 17 installation | Temurin `17.0.20.1+1`; `JAVA_HOME` and `PATH` set | Standalone JDK 17 used by Maven | **Verified** | `java`, `javac`, and `mvn -v` report 17 |
 | Maven installation | `3.9.16` on User `PATH` | Maven 3.9.x | **Verified** | `mvn -v` |
 | Maven project configuration | No `pom.xml` or wrapper | WAR packaging, release 17, UTF-8, Jakarta APIs, pgJDBC, JUnit/Surefire | **Missing** | Person 2 owns the build |
-| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 37 main and 8 test files compiled; POM still missing |
+| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 37 main and 13 test files compiled; POM still missing |
 | PostgreSQL server | `16.15` local cluster on `127.0.0.1:5432` | PostgreSQL 16.x with application role and databases | **Verified** | Schema/seed applied; SQL metadata and constraint probes passed |
 | PostgreSQL JDBC | `42.7.14` JAR | Driver on project runtime classpath | **Partially verified** | DAO tests executed; POM dependency still missing |
 | Tomcat installation | `10.1.61` installed | Tomcat 10.1.x | **Verified** | `version.bat`; previous HTTP 200 on stock pages |
@@ -332,18 +351,19 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 | JSTL | JSTL 3.0.1 JARs used for `JspC` | Correct Jakarta JSTL dependency and taglib URIs | **Partially verified** | `jakarta.tags.*` URIs compile; WAR dependency pending |
 | WAR packaging | No `pom.xml`, no WAR | Maven WAR with JSPs, classes, assets, `WEB-INF` | **Missing** | Person 2 creates the build |
 | Tomcat project deployment | Only stock Tomcat apps deployed | Project WAR deploys and serves routes | **Missing** | No project WAR |
-| JUnit 5/Surefire | Console standalone only | JUnit 5 + Surefire in Maven build | **Partially verified** | 118/118 standalone tests pass; no Surefire execution |
-| Project tests | 11 DAO test classes (7 gốc + 4 mở rộng) | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
-| Database schema/seed | `schema.sql`, `seed.sql` applied | Constraints, indexes, demo data | **Verified** | 8 tables, 14 indexes, seed counts, seven constraint probes |
+| JUnit 5/Surefire | Console standalone only | JUnit 5 + Surefire in Maven build | **Partially verified** | 124/124 standalone tests pass; no Surefire execution |
+| Project tests | 12 DAO test classes (7 gốc + 4 merge + 1 diacritic) | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
+| Database schema/seed | `schema.sql`, `seed.sql` applied | Constraints, indexes, demo data | **Verified** | 8 tables, 11 named + 3 inline unique indexes, `unaccent` extension, seed counts, constraint probes |
+| Accent-insensitive search | `unaccent` on title, author, member name, category, publisher | `Chí Phèo` and `Chi Pheo` both find the same row | **Verified (DAO/SQL)** | 7 `DiacriticSearchTest` tests pass; HTTP form encoding still Person 2 |
 | 14-calendar-day rule | Schema check and DAO persistence implemented | Service computes due date; DB check enforces it; UI displays it | **Partially verified** | Constraint probe rejects +15; generated-date DAO test passes; Service not present |
 | UI assets and JSPs | 15 JSPs, `app.css`, `app.js` | Screens compile and render against real endpoints | **Partially verified** | JSP compile passed; no HTTP render |
 | Static EL properties | 214 references checked | No missing model property | **Verified** | Checker returned `EL_PROPERTY_CHECK_OK` after fixing pagination properties |
-| Git repository | Not initialized | Repository with `.gitignore` | **Missing** | Non-blocking; initialize before sharing code |
+| Git repository | `main` plus feature branch; `.gitignore` present | Repository with remote backup | **Verified** | Pushed to `origin`; feature branch prepared for PR |
 | Secrets hygiene | Password files outside workspace; restricted ACLs | No secrets in tracked files | **Verified** | Workspace scan found no credential value or secret file; only prose mentions the variable name |
 | Course runtime requirement | No university document found | Confirmed target or explicit approval | **Decision required** | Project-owner approval exists; course acceptance unverified |
 | PostgreSQL binary checksum | Local SHA-256 recorded | Publisher checksum or equivalent integrity evidence | **Unverified** | No official checksum endpoint used |
 | Reboot autostart | Logon task registered and test-run | PostgreSQL available after reboot | **Partially verified** | Actual reboot not exercised |
-| Maven encoding | Platform `Cp1252` | UTF-8 build configuration | **Missing** | Set `project.build.sourceEncoding=UTF-8` in `pom.xml` |
+| Maven encoding | Platform `Cp1252` | UTF-8 build configuration | **Missing** | Set `project.build.sourceEncoding=UTF-8` in `pom.xml`; standalone compile now uses `-encoding UTF-8` |
 | Browser/network | Edge and Chrome installed; Maven Central/PostgreSQL/Apache reachable | Browser UI checks and dependency downloads | **Verified** | Previous environment audit and successful downloads |
 
 ## 6. Gate Assessment
@@ -354,9 +374,10 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 |---|---|---|
 | Schema, seed, constraints, and indexes exist | **PASS** | Applied to both databases; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes |
 | Constraint behavior is enforced | **PASS** | Seven rollback-safe probes passed on both databases |
-| Main and test source compile on JDK 17 | **PASS** | `javac --release 17`: 37 main, 12 test files |
+| Main and test source compile on JDK 17 | **PASS** | `javac --release 17 -encoding UTF-8`: 37 main, 13 test files |
 | Manual PK/FK/relation probes pass | **PASS** | 48 probes in rolled-back transaction on `library_test`; 0 failures; no leftover rows |
-| DAO tests pass against `library_test` | **PASS (standalone)** | 118/118 tests, 0 failures, exit code 0 |
+| DAO tests pass against `library_test` | **PASS (standalone)** | 124/124 tests, 0 failures, exit code 0 |
+| Accent-insensitive Vietnamese search | **PASS (DAO/SQL)** | `unaccent` extension installed; `Chí Phèo`, `Chi Pheo`, `CHÍ PHÈO` all match; 7 tests pass |
 | JSPs compile with JSTL 3.0.1 | **PASS (standalone)** | Tomcat `JspC`: 15 Java files, 15 classes, 0 errors |
 | JSP model properties exist | **PASS** | 214 references checked; no missing property |
 | No secrets in the workspace | **PASS** | Scan found no credential value or secret file; only prose mentions the variable name |
