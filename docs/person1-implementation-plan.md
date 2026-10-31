@@ -620,7 +620,7 @@ Person 2 must provide:
 | Reset is destructive | User approved resetting both databases; back up any data that must be preserved |
 | Test DB accidentally points to `library_db` | Require `_test` in the resolved JDBC URL |
 | Fixed seed dates become stale | Use `CURRENT_DATE`-relative dates in seed |
-| Enriched models blur entity/display concerns | Mark display fields as read-only projections; write SQL ignores them |
+| Enriched models blur entity/display concerns | Mark display fields as derived values; write SQL ignores them |
 | Concurrent search/count mismatch | Person 2 may wrap search in a transaction if snapshot consistency is required |
 
 ## 6. Change Log

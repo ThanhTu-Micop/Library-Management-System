@@ -9,9 +9,9 @@ import java.util.Objects;
  * A loan record.
  *
  * <p>The due date is exactly 14 calendar days after the loan date, enforced by a database
- * check constraint. The {@code overdue} and {@code daysOverdue} fields are read-only
- * projections computed by the service layer; they are never stored in the
- * {@code loans.status} column.
+ * check constraint. The {@code overdue} and {@code daysOverdue} fields are derived display
+ * values: they have no database column, DAO reads leave them unset, and the service layer
+ * must compute them before rendering. They are unrelated to the {@code loans.status} value.
  *
  * <p>The display projections {@code bookTitle}, {@code copyCode}, and {@code memberName}
  * are populated by DAO read queries that join the related tables.
@@ -134,6 +134,7 @@ public class Loan {
         this.memberName = memberName;
     }
 
+    /** Returns the derived overdue flag; this getter does not compute it. */
     public boolean isOverdue() {
         return overdue;
     }
@@ -142,6 +143,7 @@ public class Loan {
         this.overdue = overdue;
     }
 
+    /** Returns the derived overdue-day count; zero when not overdue or not yet computed. */
     public long getDaysOverdue() {
         return daysOverdue;
     }

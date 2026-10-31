@@ -51,7 +51,7 @@ The original Phase 1 decisions remain in force unless a status note says otherwi
 8. **Transaction management: the Service layer owns the JDBC connection and transaction** for operations that change multiple related records. The DAO layer receives a caller-owned `Connection`. This rule is architectural: no Service implementation exists yet.
 9. **Concurrency control: `SELECT ... FOR UPDATE` row locking** where appropriate. Locking DAO primitives exist; transaction orchestration is missing.
 10. **Active-loan invariant: a PostgreSQL partial unique index on `loans(copy_id)` with predicate `WHERE return_date IS NULL`.** Implemented as `idx_loans_active_partial_unique`.
-11. **Active-loan definition (project-wide):** a loan is active if and only if `return_date IS NULL`. Overdue is derived at query time from `due_date < today`; it is not stored. The implemented `loans.status` values are `ACTIVE` and `RETURNED`; the original draft's `BORROWED` label was superseded by `ACTIVE` in the schema.
+11. **Active-loan definition (project-wide):** a loan is active if and only if `return_date IS NULL`. Overdue is derived at query time from `due_date < today`; it is not stored. The implemented `loans.status` values are `ACTIVE` and `RETURNED`; the original draft's `BORROWED` label was superseded by `ACTIVE` in the schema. `BORROWED` remains a valid label only for `book_copies.status` (`CopyStatus`); it is never a loan status.
 12. **Packaging: WAR via `maven-war-plugin`; PostgreSQL driver `org.postgresql:postgresql`.** The driver version verified in this workspace is `42.7.14`; the WAR/build configuration is planned but missing.
 13. **Authentication is outside MVP scope.** It will be documented as a limitation, not claimed as implemented.
 14. **Tomcat runtime decision: Tomcat 10.1.61 with `jakarta.servlet`, JSP 3.1, and JSTL 3.0.1.** No legacy `javax.servlet` import exists.
@@ -144,7 +144,7 @@ publishers                       categories                       authors
 - `books.isbn` is `NOT NULL UNIQUE`; `books_isbn_length` requires 13–20 characters after `btrim`.
 - `books.publication_year` is nullable but must be between 1000 and 2100.
 - `books.publisher_id` and `books.category_id` are required foreign keys with `ON DELETE RESTRICT`.
-- `book_copies.copy_code` is `NOT NULL UNIQUE`; `status` is one of `AVAILABLE`, `BORROWED`, `MAINTENANCE`.
+- `book_copies.copy_code` is `NOT NULL UNIQUE`; `status` is the **copy status** (distinct from `loans.status`) and is one of `AVAILABLE`, `BORROWED`, `MAINTENANCE`.
 - `book_copies.book_id` is `ON DELETE RESTRICT`.
 - `book_authors` has primary key `(book_id, author_id)`; deleting a book cascades its author links; deleting an author with links is restricted.
 - `members.member_code` is `NOT NULL UNIQUE`; `members.status` is `ACTIVE` or `INACTIVE`.
@@ -156,7 +156,7 @@ publishers                       categories                       authors
 - `idx_loans_active_due_partial` supports overdue scans for active loans.
 - `categories` has a case-insensitive unique index `ux_categories_name_lower`. Authors and publishers currently have no unique-name constraint; the E09 uniqueness decision remains unresolved.
 
-The original draft's `BORROWED` loan status and `due_date >= loan_date` check are superseded by the implemented `ACTIVE` status and exact `+14 days` rule. These are the source-of-truth constraints in `src/main/resources/db/schema.sql`.
+The original draft's `BORROWED` **loan** status and `due_date >= loan_date` check are superseded by the implemented `ACTIVE` status and exact `+14 days` rule (`BORROWED` remains valid only as a copy status). These are the source-of-truth constraints in `src/main/resources/db/schema.sql`.
 
 ## 6. Codebase Directory Reference
 
@@ -295,8 +295,8 @@ The original Phase 1 transaction rules are preserved. Their implementation statu
 | Add book | Open one connection; insert book; insert author links; insert initial copies; commit or roll back | `JdbcBookDAO.insert`, `JdbcBookAuthorDAO.replaceForBook`, `JdbcBookCopyDAO.insert`; schema/FKs |
 | Update book | Open one connection; update book; replace author links; commit or roll back | `JdbcBookDAO.update`, `JdbcBookAuthorDAO.replaceForBook` |
 | Delete book | Open one connection; reject if any loan history; delete author links, copies, book; commit or roll back | `JdbcLoanDAO.existsByBookId`, `JdbcBookAuthorDAO.deleteByBookId`, `JdbcBookCopyDAO.deleteByBookId`, `JdbcBookDAO.delete`; FK RESTRICT |
-| Borrow | Begin; lock copy; validate member/status; verify no active loan; insert loan; set copy `BORROWED`; commit/roll back | `JdbcBookCopyDAO.findByIdForUpdate`, `JdbcMemberDAO.findById`, `JdbcLoanDAO.findActiveByCopyId`, `JdbcLoanDAO.insert`, `JdbcBookCopyDAO.updateStatus`; partial unique index |
-| Return | Begin; lock loan; reject returned/missing; lock copy; set return date/status; set copy `AVAILABLE`; commit/roll back | `JdbcLoanDAO.findByIdForUpdate`, `JdbcLoanDAO.markReturned`, `JdbcBookCopyDAO.findByIdForUpdate`, `JdbcBookCopyDAO.updateStatus`; CHECK constraints |
+| Borrow | Begin; lock copy; validate member/status; verify no active loan; insert loan; set copy status `BORROWED`; commit/roll back | `JdbcBookCopyDAO.findByIdForUpdate`, `JdbcMemberDAO.findById`, `JdbcLoanDAO.findActiveByCopyId`, `JdbcLoanDAO.insert`, `JdbcBookCopyDAO.updateStatus`; partial unique index |
+| Return | Begin; lock loan; reject returned/missing; lock copy; set return date and loan status `RETURNED`; set copy status `AVAILABLE`; commit/roll back | `JdbcLoanDAO.findByIdForUpdate`, `JdbcLoanDAO.markReturned`, `JdbcBookCopyDAO.findByIdForUpdate`, `JdbcBookCopyDAO.updateStatus`; CHECK constraints |
 
 ## 8. Existing Function-to-Layer Mapping (Preserved and Extended)
 
@@ -474,6 +474,8 @@ books/view.jsp (GET /books/view?id=)
   <- books/view.jsp (reads book.authors and copies)
 ```
 
+**Label note.** `${authors}` on `books/form.jsp` is the full author list used to populate the multi-select; it is not detail-page data. `books/view.jsp` reads only `book.authors`, which the planned service must populate with `Book.setAuthors(...)`; there is no separate `authors` request attribute on the detail page.
+
 #### 8.2.6 6. Add Member
 
 | Layer | Implementation mapping | Status |
@@ -559,9 +561,9 @@ members/list.jsp (GET /members?keyword=&status=&page=)
 |---|---|---|
 | UI/UX | `src/main/webapp/WEB-INF/views/loans/borrow.jsp`: POST form to `/loans/borrow`, fields `memberId`, `copyId`, `loanDate`, `_csrf`; dropdowns use `activeMembers` and `availableCopies`; due date is read-only display text | IMPLEMENTED |
 | Controller | No Servlet/controller. Planned `POST /loans/borrow` from `docs/implementation-plan.md` §9; planned method `borrowBook` (not present). | MISSING |
-| Service | No service. Planned transaction: begin; lock copy; validate copy/member; verify no active loan; compute `loanDate + 14`; insert loan; set copy `BORROWED`; commit/roll back; map SQLState 23505. | MISSING |
+| Service | No service. Planned transaction: begin; lock copy; validate copy/member; verify no active loan; compute `loanDate + 14`; insert loan; set copy status `BORROWED` while `loans.status` stays `ACTIVE`; commit/roll back; map SQLState 23505. | MISSING |
 | DAO | `JdbcBookCopyDAO.findByIdForUpdate(Connection, int)`; `JdbcMemberDAO.findById(Connection, int)`; `JdbcMemberDAO.findAllActive(Connection)`; `JdbcBookCopyDAO.findAvailableWithBook(Connection)`; `JdbcLoanDAO.findActiveByCopyId(Connection, int)`; `JdbcLoanDAO.insert(Connection, Loan)`; `JdbcBookCopyDAO.updateStatus(Connection, int, CopyStatus)` | IMPLEMENTED |
-| Model | `Loan`, `BookCopy`, `Member`, `CopyStatus`, `LoanStatus`; `Loan.overdue`/`daysOverdue` are service-computed projections, not stored columns | IMPLEMENTED |
+| Model | `Loan`, `BookCopy`, `Member`, `CopyStatus`, `LoanStatus`; `Loan.overdue`/`daysOverdue` are derived display fields with no database column — the service must set them before rendering | IMPLEMENTED |
 | Database | `loans` (`copy_id`, `member_id`, `loan_date`, `due_date`, `return_date`, `status`); `book_copies` (`status`); `members` (`status`). Constraints: exact 14-day due date, status/return-date consistency, FKs RESTRICT, partial unique active loan per copy, active-due partial index. | IMPLEMENTED |
 
 **Data flow**
@@ -581,7 +583,8 @@ loans/borrow.jsp (POST memberId, copyId, loanDate)
        -> JdbcLoanDAO.findActiveByCopyId(copyId)         -> reject duplicate active loan
        -> compute dueDate = loanDate + 14
        -> JdbcLoanDAO.insert(loan)                       -> loans (generated loan_id)
-       -> JdbcBookCopyDAO.updateStatus(copyId, BORROWED) -> book_copies (expect 1 row)
+       -> JdbcBookCopyDAO.updateStatus(copyId, BORROWED) -> book_copies.status only
+                                                          (copy is BORROWED; loans.status stays ACTIVE)
        -> commit / rollback
   <- Loan / DataAccessException (23505, 23514, 23503)
   <- Controller: MISSING (PRG redirect, field/global errors)
@@ -660,7 +663,7 @@ The JSP reads `l.overdue` and `l.daysOverdue`; `JdbcLoanDAO.mapLoanWithDisplay` 
 | Controller | No Servlet/controller. Planned `GET /loans/overdue`; planned method `getOverdueLoans` (not present). | MISSING |
 | Service | No service. Planned: build `LoanSearchCriteria` with `overdueOnly=true`, set `today`, load page, compute days overdue. | MISSING |
 | DAO | `JdbcLoanDAO.search(Connection, LoanSearchCriteria)` with `overdueOnly=true` produces `return_date IS NULL AND due_date < today`; `JdbcLoanDAO.countOverdue(Connection, LocalDate)` exists for dashboard counts | IMPLEMENTED |
-| Model | `LoanSearchCriteria` (`overdueOnly`, `today`, page/size), `Page<Loan>`, `Loan` with service-computed `daysOverdue` | IMPLEMENTED |
+| Model | `LoanSearchCriteria` (`overdueOnly`, `today`, page/size), `Page<Loan>`, `Loan` with derived `daysOverdue` | IMPLEMENTED |
 | Database | `loans` + `book_copies` + `books` + `members`; partial index `idx_loans_active_due_partial`; active predicate `return_date IS NULL`. | IMPLEMENTED |
 
 **Data flow**
@@ -866,7 +869,7 @@ Person 1 must not be credited with controller, service, transaction orchestratio
 3. **Build and deployment:** no `pom.xml`, Maven Wrapper, `web.xml`, or `context.xml`; no WAR; no Tomcat deployment; no HTTP evidence.
 4. **CSRF:** JSP forms contain `_csrf` and `head.jsp` can expose a meta tag, but no filter or controller validates the token.
 5. **Exception contract:** only `DataAccessException` exists. `NotFoundException`, `ValidationException`, and `BusinessRuleException` are mentioned in planning documents but have no Java source.
-6. **Overdue UI projections:** `Loan.overdue` and `Loan.daysOverdue` are not set by `JdbcLoanDAO`; a missing service must compute them for `history.jsp` and `overdue.jsp`.
+6. **Overdue display fields:** `Loan.overdue` and `Loan.daysOverdue` are not set by `JdbcLoanDAO`; a missing service must compute and set them for `history.jsp` and `overdue.jsp`.
 7. **Member update rule:** preventing `INACTIVE` while active loans exist has no implementation; only the `activeLoanCount` projection exists.
 8. **Reference-data/copy management UI:** DAOs exist, but screens and endpoints are not implemented; these are optional support scope, not part of the 12 required functions.
 9. **Author/publisher name uniqueness (E09):** the schema does not enforce unique names; the rule is still planned.
