@@ -5,6 +5,7 @@ import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -59,34 +60,8 @@ class TransactionIsolationTest {
     /** Setup connection uses auto-commit = true (default) so resetAll commits immediately. */
     private void prepare() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            TestDatabase.resetAll(c);
-            TestDatabase.seedReferenceData(c);
+            TestFixtures.prepare(c);
         }
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = new Book(null, isbn, title, 1, 1, 2020);
-        bookDao.insert(c, book);
-        return book;
-    }
-
-    private BookCopy insertCopy(Connection c, Book book, String code, CopyStatus status) {
-        BookCopy copy = new BookCopy(null, book.getBookId(), code, status);
-        copyDao.insert(c, copy);
-        return copy;
-    }
-
-    private Member insertMember(Connection c, String code, String name, String email) {
-        Member m = new Member(null, code, name, email, MemberStatus.ACTIVE);
-        memberDao.insert(c, m);
-        return m;
-    }
-
-    private Loan insertActiveLoan(Connection c, BookCopy copy, Member member, LocalDate loanDate) {
-        Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
-        loanDao.insert(c, loan);
-        return loan;
     }
 
     /** Opens a connection with auto-commit disabled for explicit transaction control. */
@@ -117,9 +92,9 @@ class TransactionIsolationTest {
         int copyId;
         int memberId;
         try (Connection setup = TestDatabase.getConnection()) {
-            Book book = insertBook(setup, "978-CC-000-000-001", "Concurrent Copy Book");
-            BookCopy copy = insertCopy(setup, book, "CC-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(setup, "M-CC-001", "Concurrent Member", "cc@test.com");
+            Book book = TestFixtures.insertBook(setup, "978-CC-000-000-001", "Concurrent Copy Book");
+            BookCopy copy = TestFixtures.insertCopy(setup, book, "CC-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(setup, "M-CC-001", "Concurrent Member", "cc@test.com");
             copyId = copy.getCopyId();
             memberId = member.getMemberId();
         }
@@ -228,8 +203,8 @@ class TransactionIsolationTest {
         prepare();
         int copyId;
         try (Connection setup = TestDatabase.getConnection()) {
-            Book book = insertBook(setup, "978-FL-000-000-001", "For Update Lock Book");
-            BookCopy copy = insertCopy(setup, book, "FL-CP-001", CopyStatus.AVAILABLE);
+            Book book = TestFixtures.insertBook(setup, "978-FL-000-000-001", "For Update Lock Book");
+            BookCopy copy = TestFixtures.insertCopy(setup, book, "FL-CP-001", CopyStatus.AVAILABLE);
             copyId = copy.getCopyId();
         }
 
@@ -290,10 +265,10 @@ class TransactionIsolationTest {
         int copyId2;
         int memberId;
         try (Connection setup = TestDatabase.getConnection()) {
-            Book book = insertBook(setup, "978-TC-000-000-001", "Two Copies Concurrent Book");
-            BookCopy cp1 = insertCopy(setup, book, "TC-CP-001", CopyStatus.AVAILABLE);
-            BookCopy cp2 = insertCopy(setup, book, "TC-CP-002", CopyStatus.AVAILABLE);
-            Member member = insertMember(setup, "M-TC-001", "TC Member", "tc@test.com");
+            Book book = TestFixtures.insertBook(setup, "978-TC-000-000-001", "Two Copies Concurrent Book");
+            BookCopy cp1 = TestFixtures.insertCopy(setup, book, "TC-CP-001", CopyStatus.AVAILABLE);
+            BookCopy cp2 = TestFixtures.insertCopy(setup, book, "TC-CP-002", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(setup, "M-TC-001", "TC Member", "tc@test.com");
             copyId1 = cp1.getCopyId();
             copyId2 = cp2.getCopyId();
             memberId = member.getMemberId();
@@ -415,7 +390,7 @@ class TransactionIsolationTest {
         prepare();
         // Default connection has autoCommit = true.
         try (Connection c = TestDatabase.getConnection()) {
-            Member m = insertMember(c, "M-AC-001", "AutoCommit", "ac@test.com");
+            Member m = TestFixtures.insertMember(c, "M-AC-001", "AutoCommit", "ac@test.com");
             int newId = m.getMemberId();
             // No commit() call — autoCommit must have persisted the row.
             try (Connection verify = TestDatabase.getConnection()) {
@@ -434,12 +409,12 @@ class TransactionIsolationTest {
         prepare();
         int memberId;
         try (Connection c = TestDatabase.getConnection()) {
-            memberId = insertMember(c, "M-ET-001", "Explicit Tx", "et@test.com").getMemberId();
+            memberId = TestFixtures.insertMember(c, "M-ET-001", "Explicit Tx", "et@test.com").getMemberId();
         }
         // Now open an explicit transaction, insert two more members, then ROLLBACK.
         try (Connection tx = beginTransaction()) {
-            insertMember(tx, "M-ET-002", "Will Rollback 1", "et2@test.com");
-            insertMember(tx, "M-ET-003", "Will Rollback 2", "et3@test.com");
+            TestFixtures.insertMember(tx, "M-ET-002", "Will Rollback 1", "et2@test.com");
+            TestFixtures.insertMember(tx, "M-ET-003", "Will Rollback 2", "et3@test.com");
             tx.rollback();
         }
         // Verify only the auto-committed member persisted.

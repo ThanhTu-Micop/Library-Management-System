@@ -1,24 +1,21 @@
 package com.library.dao.jdbc;
 
 import com.library.dao.BookCopyDAO;
-import com.library.exception.DataAccessException;
 import com.library.model.BookCopy;
 import com.library.model.enums.CopyStatus;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * JDBC implementation of {@link BookCopyDAO}.
  *
- * <p>Handwritten SQL through JDBC; no ORM. Join reads populate {@code bookTitle}.
+ * <p>Handwritten SQL through JDBC; no ORM. Join reads populate {@code bookTitle}. Shared
+ * statement mechanics live in {@link JdbcSupport}.
  */
 public class JdbcBookCopyDAO implements BookCopyDAO {
 
@@ -48,95 +45,45 @@ public class JdbcBookCopyDAO implements BookCopyDAO {
 
     @Override
     public List<BookCopy> findByBookId(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_BY_BOOK_ID)) {
-            ps.setInt(1, bookId);
-            try (ResultSet rs = ps.executeQuery()) {
-                List<BookCopy> list = new ArrayList<>();
-                while (rs.next()) {
-                    list.add(mapBookCopy(rs));
-                }
-                return list;
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find book copies by book id: " + bookId, e);
-        }
+        return JdbcSupport.queryList(c, FIND_BY_BOOK_ID,
+                "Failed to find book copies by book id: " + bookId,
+                JdbcBookCopyDAO::mapBookCopy, bookId);
     }
 
     @Override
     public Optional<BookCopy> findByIdForUpdate(Connection c, int copyId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_BY_ID_FOR_UPDATE)) {
-            ps.setInt(1, copyId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapBookCopy(rs));
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to lock book copy id: " + copyId, e);
-        }
+        return JdbcSupport.queryOne(c, FIND_BY_ID_FOR_UPDATE,
+                "Failed to lock book copy id: " + copyId,
+                JdbcBookCopyDAO::mapBookCopy, copyId);
     }
 
     @Override
     public int insert(Connection c, BookCopy copy) {
-        try (PreparedStatement ps = c.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, copy.getBookId());
-            ps.setString(2, copy.getCopyCode());
-            ps.setString(3, copy.getStatus() != null ? copy.getStatus().name() : CopyStatus.AVAILABLE.name());
-            int affected = ps.executeUpdate();
-            if (affected == 0) {
-                throw new DataAccessException("Insert book copy failed: no rows affected");
-            }
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (!keys.next()) {
-                    throw new DataAccessException("Insert book copy failed: no generated key");
-                }
-                copy.setCopyId(keys.getInt(1));
-            }
-            return affected;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to insert book copy: " + copy.getCopyCode(), e);
-        }
+        CopyStatus status = copy.getStatus() != null ? copy.getStatus() : CopyStatus.AVAILABLE;
+        return JdbcSupport.insert(c, INSERT,
+                "Failed to insert book copy: " + copy.getCopyCode(),
+                copy::setCopyId, copy.getBookId(), copy.getCopyCode(), status.name());
     }
 
     @Override
     public int updateStatus(Connection c, int copyId, CopyStatus status) {
-        try (PreparedStatement ps = c.prepareStatement(UPDATE_STATUS)) {
-            ps.setString(1, status.name());
-            ps.setInt(2, copyId);
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to update book copy status id=" + copyId, e);
-        }
+        return JdbcSupport.update(c, UPDATE_STATUS,
+                "Failed to update book copy status id=" + copyId, status.name(), copyId);
     }
 
     @Override
     public void deleteByBookId(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(DELETE_BY_BOOK_ID)) {
-            ps.setInt(1, bookId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to delete book copies by book id: " + bookId, e);
-        }
+        JdbcSupport.update(c, DELETE_BY_BOOK_ID,
+                "Failed to delete book copies by book id: " + bookId, bookId);
     }
 
     @Override
     public List<BookCopy> findAvailableWithBook(Connection c) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_AVAILABLE_WITH_BOOK);
-             ResultSet rs = ps.executeQuery()) {
-            List<BookCopy> list = new ArrayList<>();
-            while (rs.next()) {
-                BookCopy copy = mapBookCopy(rs);
-                copy.setBookTitle(rs.getString("book_title"));
-                list.add(copy);
-            }
-            return list;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find available book copies", e);
-        }
+        return JdbcSupport.queryList(c, FIND_AVAILABLE_WITH_BOOK,
+                "Failed to find available book copies", JdbcBookCopyDAO::mapAvailableCopy);
     }
 
-    private BookCopy mapBookCopy(ResultSet rs) throws SQLException {
+    private static BookCopy mapBookCopy(ResultSet rs) throws SQLException {
         BookCopy copy = new BookCopy();
         copy.setCopyId(rs.getInt("copy_id"));
         copy.setBookId(rs.getInt("book_id"));
@@ -144,6 +91,12 @@ public class JdbcBookCopyDAO implements BookCopyDAO {
         String status = rs.getString("status");
         copy.setStatus(status != null ? CopyStatus.valueOf(status) : null);
         copy.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
+        return copy;
+    }
+
+    private static BookCopy mapAvailableCopy(ResultSet rs) throws SQLException {
+        BookCopy copy = mapBookCopy(rs);
+        copy.setBookTitle(rs.getString("book_title"));
         return copy;
     }
 }

@@ -5,6 +5,7 @@ import com.library.dao.jdbc.JdbcBookAuthorDAO;
 import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.model.Author;
 import com.library.model.Book;
 import com.library.model.Member;
@@ -36,17 +37,6 @@ class DiacriticSearchTest {
     private final BookAuthorDAO bookAuthorDao = new JdbcBookAuthorDAO();
     private final MemberDAO memberDao = new JdbcMemberDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = new Book(null, isbn, title, 1, 1, 1941);
-        bookDao.insert(c, book);
-        return book;
-    }
-
     private List<Book> searchBooks(Connection c, String keyword) throws Exception {
         BookSearchCriteria criteria = new BookSearchCriteria();
         criteria.setKeyword(keyword);
@@ -68,8 +58,8 @@ class DiacriticSearchTest {
     @Test
     void accentedKeywordFindsAccentedTitle() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE);
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
 
             List<Book> found = searchBooks(c, CHI_PHEO_TITLE);
 
@@ -81,8 +71,8 @@ class DiacriticSearchTest {
     @Test
     void unaccentedKeywordFindsAccentedTitle() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE);
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
 
             List<Book> found = searchBooks(c, "Chi Pheo");
 
@@ -94,8 +84,8 @@ class DiacriticSearchTest {
     @Test
     void uppercaseAccentedKeywordFindsTitle() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE);
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
 
             List<Book> found = searchBooks(c, "CHÍ PHÈO");
 
@@ -106,8 +96,8 @@ class DiacriticSearchTest {
     @Test
     void partialUnaccentedKeywordFindsTitle() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE);
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
 
             List<Book> found = searchBooks(c, "pheo");
 
@@ -119,10 +109,11 @@ class DiacriticSearchTest {
     @Test
     void authorNameSearchIsAccentInsensitive() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Author author = new Author(null, "Nguyễn Nhất Anh");
             authorDao.insert(c, author);
-            Book book = insertBook(c, "978-604-1-00001-1", "Tôi thấy hoa vàng trên cỏ xanh");
+            Book book = TestFixtures.insertBook(c, "978-604-1-00001-1",
+                    "Tôi thấy hoa vàng trên cỏ xanh", 1941);
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(author.getAuthorId()));
 
             assertEquals(1, searchByAuthor(c, "Nguyen Nhat Anh").size(),
@@ -135,7 +126,7 @@ class DiacriticSearchTest {
     @Test
     void memberNameSearchIsAccentInsensitive() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Member member = new Member(null, "M-ACC-001", "Nguyễn Văn An",
                     "an@example.com", MemberStatus.ACTIVE);
             memberDao.insert(c, member);
@@ -150,15 +141,15 @@ class DiacriticSearchTest {
     @Test
     void likeWildcardsRemainEscaped() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, "978-WC-000-000-001", "Plain Title");
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, "978-WC-000-000-001", "Plain Title", 1941);
 
             assertEquals(0, searchBooks(c, "%").size(),
                     "A bare % must be escaped and must not match every row");
             assertEquals(0, searchBooks(c, "_").size(),
                     "A bare _ must be escaped and must not match every single character");
 
-            insertBook(c, "978-WC-000-000-002", "100% Clean");
+            TestFixtures.insertBook(c, "978-WC-000-000-002", "100% Clean", 1941);
             assertEquals(1, searchBooks(c, "100%").size(),
                     "A literal % inside a keyword must still match a title that contains it");
         }

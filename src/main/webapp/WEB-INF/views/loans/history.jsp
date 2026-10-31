@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="ui" tagdir="/WEB-INF/tags" %>
 
 <c:import url="/WEB-INF/views/common/head.jsp">
     <c:param name="pageTitle" value="Loan history" />
@@ -81,32 +82,6 @@
     </table>
 </div>
 
-<c:if test="${loanPage.totalPages gt 1}">
-    <div class="pagination mt-2">
-        <c:if test="${not loanPage.first}">
-            <c:url var="previousUrl" value="/loans/history">
-                <c:param name="page" value="${loanPage.page - 1}" />
-                <c:param name="size" value="${loanPage.size}" />
-                <c:if test="${criteria.memberId != null}"><c:param name="memberId" value="${criteria.memberId}" /></c:if>
-                <c:if test="${criteria.status != null}"><c:param name="status" value="${criteria.status}" /></c:if>
-                <c:if test="${criteria.fromDate != null}"><c:param name="fromDate" value="${criteria.fromDate}" /></c:if>
-                <c:if test="${criteria.toDate != null}"><c:param name="toDate" value="${criteria.toDate}" /></c:if>
-            </c:url>
-            <a href="${previousUrl}" class="btn btn-sm btn-secondary">Previous</a>
-        </c:if>
-        <span class="current">Page <c:out value="${loanPage.page + 1}" /> / <c:out value="${loanPage.totalPages}" /></span>
-        <c:if test="${not loanPage.last}">
-            <c:url var="nextUrl" value="/loans/history">
-                <c:param name="page" value="${loanPage.page + 1}" />
-                <c:param name="size" value="${loanPage.size}" />
-                <c:if test="${criteria.memberId != null}"><c:param name="memberId" value="${criteria.memberId}" /></c:if>
-                <c:if test="${criteria.status != null}"><c:param name="status" value="${criteria.status}" /></c:if>
-                <c:if test="${criteria.fromDate != null}"><c:param name="fromDate" value="${criteria.fromDate}" /></c:if>
-                <c:if test="${criteria.toDate != null}"><c:param name="toDate" value="${criteria.toDate}" /></c:if>
-            </c:url>
-            <a href="${nextUrl}" class="btn btn-sm btn-secondary">Next</a>
-        </c:if>
-    </div>
-</c:if>
+<ui:pagination pageData="${loanPage}" baseUrl="/loans/history" />
 
 <c:import url="/WEB-INF/views/common/foot.jsp" />

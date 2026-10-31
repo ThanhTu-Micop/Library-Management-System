@@ -5,6 +5,7 @@ import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -36,20 +37,11 @@ class JdbcLoanDAOTest {
     private final MemberDAO memberDao = new JdbcMemberDAO();
     private final LoanDAO loanDao = new JdbcLoanDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book newBook(String isbn, String title) {
-        return new Book(null, isbn, title, 1, 1, 2020);
-    }
-
     @Test
     void borrowAndReturnFlow() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-LOAN-000-001", "Loan Test Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-LOAN-000-001", "Loan Test Book");
             bookDao.insert(c, book);
 
             BookCopy copy = new BookCopy(null, book.getBookId(), "LOAN-CP-001", CopyStatus.AVAILABLE);
@@ -77,8 +69,8 @@ class JdbcLoanDAOTest {
     @Test
     void validDueDateIsExactlyLoanDatePlus14Days() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-14DAY-000-001", "14 Day Rule");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-14DAY-000-001", "14 Day Rule");
             bookDao.insert(c, book);
             BookCopy copy = new BookCopy(null, book.getBookId(), "14DAY-CP-001", CopyStatus.AVAILABLE);
             copyDao.insert(c, copy);
@@ -98,8 +90,8 @@ class JdbcLoanDAOTest {
     @Test
     void invalidDueDateIsRejectedByCheckConstraint() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-BADDUE-000-001", "Bad Due Date");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-BADDUE-000-001", "Bad Due Date");
             bookDao.insert(c, book);
             BookCopy copy = new BookCopy(null, book.getBookId(), "BADDUE-CP-001", CopyStatus.AVAILABLE);
             copyDao.insert(c, copy);
@@ -117,8 +109,8 @@ class JdbcLoanDAOTest {
     @Test
     void onlyOneActiveLoanPerCopy() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-ACTIVE-000-001", "Active Unique");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-ACTIVE-000-001", "Active Unique");
             bookDao.insert(c, book);
             BookCopy copy = new BookCopy(null, book.getBookId(), "ACTIVE-CP-001", CopyStatus.AVAILABLE);
             copyDao.insert(c, copy);
@@ -141,8 +133,8 @@ class JdbcLoanDAOTest {
     @Test
     void countActiveAndOverdueUseCallerSuppliedToday() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-COUNT-000-001", "Count Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-COUNT-000-001", "Count Book");
             bookDao.insert(c, book);
             BookCopy copy1 = new BookCopy(null, book.getBookId(), "CNT-CP-001", CopyStatus.BORROWED);
             BookCopy copy2 = new BookCopy(null, book.getBookId(), "CNT-CP-002", CopyStatus.BORROWED);
@@ -173,8 +165,8 @@ class JdbcLoanDAOTest {
     @Test
     void existsByBookIdIncludesReturnedLoans() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-HIST-000-001", "History Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-HIST-000-001", "History Book");
             bookDao.insert(c, book);
             BookCopy copy = new BookCopy(null, book.getBookId(), "HIST-CP-001", CopyStatus.BORROWED);
             copyDao.insert(c, copy);
@@ -195,8 +187,8 @@ class JdbcLoanDAOTest {
     @Test
     void joinedDisplayFieldsArePopulated() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = newBook("978-JOIN-000-001", "Joined Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.newBook("978-JOIN-000-001", "Joined Book");
             bookDao.insert(c, book);
             BookCopy copy = new BookCopy(null, book.getBookId(), "JOIN-CP-001", CopyStatus.BORROWED);
             copyDao.insert(c, copy);

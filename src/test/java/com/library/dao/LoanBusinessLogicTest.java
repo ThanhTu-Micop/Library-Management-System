@@ -1,10 +1,8 @@
 package com.library.dao;
 
-import com.library.dao.jdbc.JdbcBookCopyDAO;
-import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
-import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -14,7 +12,6 @@ import com.library.model.Page;
 import com.library.model.criteria.LoanSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
-import com.library.model.enums.MemberStatus;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -39,44 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class LoanBusinessLogicTest {
 
-    private final BookDAO bookDao = new JdbcBookDAO();
-    private final BookCopyDAO copyDao = new JdbcBookCopyDAO();
-    private final MemberDAO memberDao = new JdbcMemberDAO();
     private final LoanDAO loanDao = new JdbcLoanDAO();
-
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book newBook(String isbn, String title) {
-        return new Book(null, isbn, title, 1, 1, 2020);
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = newBook(isbn, title);
-        bookDao.insert(c, book);
-        return book;
-    }
-
-    private BookCopy insertCopy(Connection c, Book book, String code, CopyStatus status) {
-        BookCopy copy = new BookCopy(null, book.getBookId(), code, status);
-        copyDao.insert(c, copy);
-        return copy;
-    }
-
-    private Member insertMember(Connection c, String code, String name, String email) {
-        Member m = new Member(null, code, name, email, MemberStatus.ACTIVE);
-        memberDao.insert(c, m);
-        return m;
-    }
-
-    private Loan insertActiveLoan(Connection c, BookCopy copy, Member member, LocalDate loanDate) {
-        Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
-        loanDao.insert(c, loan);
-        return loan;
-    }
 
     // ------------------------------------------------------------------
     // 14-day rule: calendar edge cases
@@ -85,14 +45,14 @@ class LoanBusinessLogicTest {
     @Test
     void dueDateExactlyFourteenDaysAcrossMonthBoundary() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-MB-000-000-001", "Month Boundary Book");
-            BookCopy copy = insertCopy(c, book, "MB-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-MB-001", "Member MB", "mb@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-MB-000-000-001", "Month Boundary Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "MB-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-MB-001", "Member MB", "mb@test.com");
 
             // Jan 20 + 14 days = Feb 3 (crosses January→February boundary).
             LocalDate loanDate = LocalDate.of(2026, 1, 20);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
             assertEquals(LocalDate.of(2026, 2, 3), found.getDueDate());
@@ -102,14 +62,14 @@ class LoanBusinessLogicTest {
     @Test
     void dueDateExactlyFourteenDaysInLeapYear() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-LP-000-000-001", "Leap Year Book");
-            BookCopy copy = insertCopy(c, book, "LP-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-LP-001", "Member LP", "lp@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-LP-000-000-001", "Leap Year Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "LP-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-LP-001", "Member LP", "lp@test.com");
 
             // Feb 16, 2024 (leap year) + 14 days = Mar 1, 2024 (crosses Feb 29).
             LocalDate loanDate = LocalDate.of(2024, 2, 16);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
             assertEquals(LocalDate.of(2024, 3, 1), found.getDueDate(),
@@ -120,14 +80,14 @@ class LoanBusinessLogicTest {
     @Test
     void dueDateExactlyFourteenDaysInNonLeapYear() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-NL-000-000-001", "Non Leap Book");
-            BookCopy copy = insertCopy(c, book, "NL-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-NL-001", "Member NL", "nl@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-NL-000-000-001", "Non Leap Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "NL-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-NL-001", "Member NL", "nl@test.com");
 
             // Feb 16, 2026 (non-leap) + 14 days = Mar 2, 2026 (no Feb 29 to skip).
             LocalDate loanDate = LocalDate.of(2026, 2, 16);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
             assertEquals(LocalDate.of(2026, 3, 2), found.getDueDate());
@@ -137,14 +97,14 @@ class LoanBusinessLogicTest {
     @Test
     void dueDateExactlyFourteenDaysAcrossYearBoundary() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-YB-000-000-001", "Year Boundary Book");
-            BookCopy copy = insertCopy(c, book, "YB-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-YB-001", "Member YB", "yb@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-YB-000-000-001", "Year Boundary Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "YB-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-YB-001", "Member YB", "yb@test.com");
 
             // Dec 20, 2026 + 14 days = Jan 3, 2027 (crosses calendar year).
             LocalDate loanDate = LocalDate.of(2026, 12, 20);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
             assertEquals(LocalDate.of(2027, 1, 3), found.getDueDate());
@@ -154,10 +114,10 @@ class LoanBusinessLogicTest {
     @Test
     void dueDateFifteenDaysAfterLoanDateIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-D15-000-000-001", "15 Day Rejected");
-            BookCopy copy = insertCopy(c, book, "D15-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-D15-001", "Member D15", "d15@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-D15-000-000-001", "15 Day Rejected");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "D15-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-D15-001", "Member D15", "d15@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 6, 1);
             DataAccessException error = assertThrows(DataAccessException.class,
@@ -174,13 +134,13 @@ class LoanBusinessLogicTest {
     @Test
     void markReturnedIsIdempotent() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-IDEM-000-000-001", "Idempotent Return Book");
-            BookCopy copy = insertCopy(c, book, "IDEM-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-IDEM-001", "Member Idem", "idem@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-IDEM-000-000-001", "Idempotent Return Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "IDEM-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-IDEM-001", "Member Idem", "idem@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 9, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // First call: 1 row affected.
             assertEquals(1, loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(5)));
@@ -201,13 +161,13 @@ class LoanBusinessLogicTest {
     @Test
     void markReturnedWithDateBeforeLoanDateIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-BR-000-000-001", "Before Loan Date Book");
-            BookCopy copy = insertCopy(c, book, "BR-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-BR-001", "Member BR", "br@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-BR-000-000-001", "Before Loan Date Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "BR-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-BR-001", "Member BR", "br@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 8, 10);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.markReturned(c, loan.getLoanId(), loanDate.minusDays(1)));
@@ -224,13 +184,13 @@ class LoanBusinessLogicTest {
     @Test
     void markReturnedOnSameDayAsLoanDateIsAllowed() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-SD-000-000-001", "Same Day Return Book");
-            BookCopy copy = insertCopy(c, book, "SD-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-SD-001", "Member SD", "sd@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-SD-000-000-001", "Same Day Return Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "SD-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-SD-001", "Member SD", "sd@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 7, 15);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             assertEquals(1, loanDao.markReturned(c, loan.getLoanId(), loanDate));
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
@@ -246,13 +206,13 @@ class LoanBusinessLogicTest {
         // constraint only requires return_date >= loan_date. If a future fix adds the
         // constraint, this test will fail and must be updated to expect a 23514 error.
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-FU-000-000-001", "Future Return Book");
-            BookCopy copy = insertCopy(c, book, "FU-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-FU-001", "Member FU", "fu@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-FU-000-000-001", "Future Return Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "FU-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-FU-001", "Member FU", "fu@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 5, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // return_date far in the future — accepted today because no rule forbids it.
             LocalDate futureReturn = LocalDate.of(2099, 12, 31);
@@ -265,7 +225,7 @@ class LoanBusinessLogicTest {
     @Test
     void markReturnedOnNonExistentLoanIdReturnsZero() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             int affected = loanDao.markReturned(c, 999_999, LocalDate.of(2026, 1, 1));
             assertEquals(0, affected,
                     "markReturned on a non-existent loan_id must be a no-op returning 0, not an exception");
@@ -279,13 +239,13 @@ class LoanBusinessLogicTest {
     @Test
     void markReturnedCannotReactivateAnAlreadyReturnedLoan() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RE-000-000-001", "Reactivate Attempt Book");
-            BookCopy copy = insertCopy(c, book, "RE-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-RE-001", "Member RE", "re@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RE-000-000-001", "Reactivate Attempt Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "RE-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-RE-001", "Member RE", "re@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 4, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(3));
 
@@ -301,15 +261,15 @@ class LoanBusinessLogicTest {
     @Test
     void findActiveExcludesReturnedLoans() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-FA-000-000-001", "Find Active Book");
-            BookCopy copyA = insertCopy(c, book, "FA-CP-001", CopyStatus.AVAILABLE);
-            BookCopy copyB = insertCopy(c, book, "FA-CP-002", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-FA-001", "Member FA", "fa@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-FA-000-000-001", "Find Active Book");
+            BookCopy copyA = TestFixtures.insertCopy(c, book, "FA-CP-001", CopyStatus.AVAILABLE);
+            BookCopy copyB = TestFixtures.insertCopy(c, book, "FA-CP-002", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-FA-001", "Member FA", "fa@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan active = insertActiveLoan(c, copyA, member, today.minusDays(2));
-            Loan toReturn = insertActiveLoan(c, copyB, member, today.minusDays(3));
+            Loan active = TestFixtures.insertActiveLoan(c, copyA, member, today.minusDays(2));
+            Loan toReturn = TestFixtures.insertActiveLoan(c, copyB, member, today.minusDays(3));
             loanDao.markReturned(c, toReturn.getLoanId(), today);
 
             List<Loan> activeLoans = loanDao.findActive(c);
@@ -322,10 +282,10 @@ class LoanBusinessLogicTest {
     @Test
     void loanInsertedWithReturnedStatusRequiresReturnDate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-IR-000-000-001", "Historical Loan Book");
-            BookCopy copy = insertCopy(c, book, "IR-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-IR-001", "Member IR", "ir@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-IR-000-000-001", "Historical Loan Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "IR-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-IR-001", "Member IR", "ir@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 3, 1);
 
@@ -350,24 +310,24 @@ class LoanBusinessLogicTest {
     @Test
     void multipleLoanHistoryPerCopyAllowed() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-HIS-000-000-001", "History Per Copy Book");
-            BookCopy copy = insertCopy(c, book, "HIS-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-HIS-001", "Member HIS", "his@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-HIS-000-000-001", "History Per Copy Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "HIS-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-HIS-001", "Member HIS", "his@test.com");
 
             // First borrow-return cycle.
             LocalDate d1 = LocalDate.of(2026, 1, 5);
-            Loan l1 = insertActiveLoan(c, copy, member, d1);
+            Loan l1 = TestFixtures.insertActiveLoan(c, copy, member, d1);
             loanDao.markReturned(c, l1.getLoanId(), d1.plusDays(10));
 
             // Second borrow-return cycle on the same copy.
             LocalDate d2 = LocalDate.of(2026, 2, 10);
-            Loan l2 = insertActiveLoan(c, copy, member, d2);
+            Loan l2 = TestFixtures.insertActiveLoan(c, copy, member, d2);
             loanDao.markReturned(c, l2.getLoanId(), d2.plusDays(7));
 
             // Third borrow currently active.
             LocalDate d3 = LocalDate.of(2026, 3, 15);
-            Loan l3 = insertActiveLoan(c, copy, member, d3);
+            Loan l3 = TestFixtures.insertActiveLoan(c, copy, member, d3);
 
             // History for this copy: 3 loans total, 2 returned, 1 active.
             LoanSearchCriteria criteria = new LoanSearchCriteria();
@@ -384,15 +344,15 @@ class LoanBusinessLogicTest {
     @Test
     void multipleActiveLoansForDifferentCopiesOfSameBookAllowed() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-MC-000-000-001", "Multi Copy Book");
-            BookCopy copyA = insertCopy(c, book, "MC-CP-001", CopyStatus.AVAILABLE);
-            BookCopy copyB = insertCopy(c, book, "MC-CP-002", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-MC-001", "Member MC", "mc@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-MC-000-000-001", "Multi Copy Book");
+            BookCopy copyA = TestFixtures.insertCopy(c, book, "MC-CP-001", CopyStatus.AVAILABLE);
+            BookCopy copyB = TestFixtures.insertCopy(c, book, "MC-CP-002", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-MC-001", "Member MC", "mc@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan l1 = insertActiveLoan(c, copyA, member, today.minusDays(1));
-            Loan l2 = insertActiveLoan(c, copyB, member, today.minusDays(2));
+            Loan l1 = TestFixtures.insertActiveLoan(c, copyA, member, today.minusDays(1));
+            Loan l2 = TestFixtures.insertActiveLoan(c, copyB, member, today.minusDays(2));
 
             // The unique partial index is on copy_id (WHERE return_date IS NULL), not book_id.
             // Two active loans on DIFFERENT copies of the SAME book are both valid.
@@ -405,16 +365,16 @@ class LoanBusinessLogicTest {
     @Test
     void multipleActiveLoansForSameMemberDifferentBooksAllowed() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book bookA = insertBook(c, "978-MA-000-000-001", "Book A");
-            Book bookB = insertBook(c, "978-MA-000-000-002", "Book B");
-            BookCopy copyA = insertCopy(c, bookA, "MA-CP-001", CopyStatus.AVAILABLE);
-            BookCopy copyB = insertCopy(c, bookB, "MA-CP-002", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-MA-001", "Member MA", "ma@test.com");
+            TestFixtures.prepare(c);
+            Book bookA = TestFixtures.insertBook(c, "978-MA-000-000-001", "Book A");
+            Book bookB = TestFixtures.insertBook(c, "978-MA-000-000-002", "Book B");
+            BookCopy copyA = TestFixtures.insertCopy(c, bookA, "MA-CP-001", CopyStatus.AVAILABLE);
+            BookCopy copyB = TestFixtures.insertCopy(c, bookB, "MA-CP-002", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-MA-001", "Member MA", "ma@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            insertActiveLoan(c, copyA, member, today.minusDays(1));
-            insertActiveLoan(c, copyB, member, today.minusDays(2));
+            TestFixtures.insertActiveLoan(c, copyA, member, today.minusDays(1));
+            TestFixtures.insertActiveLoan(c, copyB, member, today.minusDays(2));
 
             // One member can have multiple active loans on different books/copies.
             LoanSearchCriteria criteria = new LoanSearchCriteria();
@@ -431,17 +391,17 @@ class LoanBusinessLogicTest {
     @Test
     void countActiveExcludesReturnedLoans() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-CA-000-000-001", "Count Active Book");
-            BookCopy c1 = insertCopy(c, book, "CA-CP-001", CopyStatus.AVAILABLE);
-            BookCopy c2 = insertCopy(c, book, "CA-CP-002", CopyStatus.AVAILABLE);
-            BookCopy c3 = insertCopy(c, book, "CA-CP-003", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-CA-001", "Member CA", "ca@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-CA-000-000-001", "Count Active Book");
+            BookCopy c1 = TestFixtures.insertCopy(c, book, "CA-CP-001", CopyStatus.AVAILABLE);
+            BookCopy c2 = TestFixtures.insertCopy(c, book, "CA-CP-002", CopyStatus.AVAILABLE);
+            BookCopy c3 = TestFixtures.insertCopy(c, book, "CA-CP-003", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-CA-001", "Member CA", "ca@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan l1 = insertActiveLoan(c, c1, member, today.minusDays(2));
-            Loan l2 = insertActiveLoan(c, c2, member, today.minusDays(3));
-            Loan l3 = insertActiveLoan(c, c3, member, today.minusDays(4));
+            Loan l1 = TestFixtures.insertActiveLoan(c, c1, member, today.minusDays(2));
+            Loan l2 = TestFixtures.insertActiveLoan(c, c2, member, today.minusDays(3));
+            Loan l3 = TestFixtures.insertActiveLoan(c, c3, member, today.minusDays(4));
 
             loanDao.markReturned(c, l3.getLoanId(), today);
 
@@ -457,14 +417,14 @@ class LoanBusinessLogicTest {
     @Test
     void countOverdueDependsOnCallerSuppliedToday() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-CO-000-000-001", "Count Overdue Book");
-            BookCopy copy = insertCopy(c, book, "CO-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-CO-001", "Member CO", "co@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-CO-000-000-001", "Count Overdue Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "CO-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-CO-001", "Member CO", "co@test.com");
 
             // LoanDate=Oct 1, DueDate=Oct 15.
             LocalDate loanDate = LocalDate.of(2026, 10, 1);
-            insertActiveLoan(c, copy, member, loanDate);
+            TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // On Oct 10: not yet overdue (due Oct 15).
             assertEquals(0, loanDao.countOverdue(c, LocalDate.of(2026, 10, 10)));
@@ -480,13 +440,13 @@ class LoanBusinessLogicTest {
     @Test
     void searchOverdueOnlyUsesCriteriaTodayNotSystemClock() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-SO-000-000-001", "Search Overdue Book");
-            BookCopy copy = insertCopy(c, book, "SO-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-SO-001", "Member SO", "so@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-SO-000-000-001", "Search Overdue Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "SO-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-SO-001", "Member SO", "so@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 10, 1);
-            insertActiveLoan(c, copy, member, loanDate);
+            TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // Pretend "today" is Oct 10 — not overdue.
             LoanSearchCriteria notOverdue = new LoanSearchCriteria();
@@ -507,16 +467,16 @@ class LoanBusinessLogicTest {
     @Test
     void searchWithDateRangeFilterIsInclusive() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-DR-000-000-001", "Date Range Book");
-            BookCopy cp1 = insertCopy(c, book, "DR-CP-001", CopyStatus.AVAILABLE);
-            BookCopy cp2 = insertCopy(c, book, "DR-CP-002", CopyStatus.AVAILABLE);
-            BookCopy cp3 = insertCopy(c, book, "DR-CP-003", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-DR-001", "Member DR", "dr@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-DR-000-000-001", "Date Range Book");
+            BookCopy cp1 = TestFixtures.insertCopy(c, book, "DR-CP-001", CopyStatus.AVAILABLE);
+            BookCopy cp2 = TestFixtures.insertCopy(c, book, "DR-CP-002", CopyStatus.AVAILABLE);
+            BookCopy cp3 = TestFixtures.insertCopy(c, book, "DR-CP-003", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-DR-001", "Member DR", "dr@test.com");
 
-            insertActiveLoan(c, cp1, member, LocalDate.of(2026, 1, 10));
-            insertActiveLoan(c, cp2, member, LocalDate.of(2026, 2, 15));
-            insertActiveLoan(c, cp3, member, LocalDate.of(2026, 3, 20));
+            TestFixtures.insertActiveLoan(c, cp1, member, LocalDate.of(2026, 1, 10));
+            TestFixtures.insertActiveLoan(c, cp2, member, LocalDate.of(2026, 2, 15));
+            TestFixtures.insertActiveLoan(c, cp3, member, LocalDate.of(2026, 3, 20));
 
             LoanSearchCriteria criteria = new LoanSearchCriteria();
             criteria.setFromDate(LocalDate.of(2026, 2, 1));
@@ -530,15 +490,15 @@ class LoanBusinessLogicTest {
     @Test
     void searchByStatusReturnsOnlyMatchingLoans() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-SS-000-000-001", "Status Search Book");
-            BookCopy cp1 = insertCopy(c, book, "SS-CP-001", CopyStatus.AVAILABLE);
-            BookCopy cp2 = insertCopy(c, book, "SS-CP-002", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-SS-001", "Member SS", "ss@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-SS-000-000-001", "Status Search Book");
+            BookCopy cp1 = TestFixtures.insertCopy(c, book, "SS-CP-001", CopyStatus.AVAILABLE);
+            BookCopy cp2 = TestFixtures.insertCopy(c, book, "SS-CP-002", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-SS-001", "Member SS", "ss@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan active = insertActiveLoan(c, cp1, member, today.minusDays(2));
-            Loan returned = insertActiveLoan(c, cp2, member, today.minusDays(5));
+            Loan active = TestFixtures.insertActiveLoan(c, cp1, member, today.minusDays(2));
+            Loan returned = TestFixtures.insertActiveLoan(c, cp2, member, today.minusDays(5));
             loanDao.markReturned(c, returned.getLoanId(), today.minusDays(1));
 
             LoanSearchCriteria activeOnly = new LoanSearchCriteria();
@@ -558,13 +518,13 @@ class LoanBusinessLogicTest {
     @Test
     void findActiveByCopyIdReturnsEmptyAfterReturn() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-FAC-000-000-001", "Find Active By Copy Book");
-            BookCopy copy = insertCopy(c, book, "FAC-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-FAC-001", "Member FAC", "fac@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-FAC-000-000-001", "Find Active By Copy Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "FAC-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-FAC-001", "Member FAC", "fac@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan loan = insertActiveLoan(c, copy, member, today);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, today);
 
             Optional<Loan> active = loanDao.findActiveByCopyId(c, copy.getCopyId());
             assertTrue(active.isPresent());

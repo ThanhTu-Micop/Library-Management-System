@@ -3,12 +3,12 @@
 | Field | Value |
 |---|---|
 | Project | Library Management System |
-| Audit date | 2026-10-27 |
-| Report version | 3.1 |
+| Audit date | 2026-10-31 |
+| Report version | 3.2 |
 | Auditor scope | Person 1: database, SQL, JDBC/DAO, and UI/UX |
 | Workspace | `C:\Users\BINHND\Desktop\Library-Management-System-main\Library-Management-System-main\library-management-system` |
 | Audit type | Environment inspection plus Person 1 implementation verification |
-| Changes made | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and documentation were created; the runtime toolchain was previously installed |
+| Changes made | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and documentation were created; the runtime toolchain was previously installed. On 2026-10-30 duplicated JDBC/criteria/test-fixture/JSP-pagination code was refactored into shared helpers; compilation, DAO tests, and `JspC` were re-run on 2026-10-31 |
 | Person 1 gate | **PASS** for the agreed standalone scope |
 | Full Phase 2 gate | **BLOCKED** — Maven build, WAR deployment, HTTP flows, and Surefire integration are not available |
 
@@ -29,11 +29,11 @@
 
 ### Implemented in the workspace
 
-- 37 main Java source files, compiled to 37 class files.
-- 9 DAO interfaces and 9 JDBC implementations, including `BookAuthorDAO` and `JdbcBookAuthorDAO`.
-- 9 model classes, 4 enums, and 3 search-criteria classes.
-- 13 test source files with 12 DAO test classes; 124 tests pass under the standalone JUnit console.
-- 15 JSP files, all compiled by Tomcat `JspC`.
+- 40 main Java source files, compiled to 41 class files (including the nested `JdbcSupport.RowMapper`).
+- 9 DAO interfaces and 9 JDBC implementations, including `BookAuthorDAO` and `JdbcBookAuthorDAO`, plus shared `JdbcSupport` and `AbstractNamedEntityDAO<T>`.
+- 9 model classes, 4 enums, and 4 criteria classes (including `PageCriteria`).
+- 14 test source files with 12 DAO test classes plus `TestDatabase` and `TestFixtures`; 124 tests pass under the standalone JUnit console.
+- 15 JSP files plus the shared `pagination.tag`; all compiled by Tomcat `JspC` (16 generated files).
 - `schema.sql`, `seed.sql`, CSS, and vanilla JavaScript.
 - Updated database, implementation, Java-concept, and audit documentation.
 
@@ -148,23 +148,23 @@ Default locale: en_US, platform encoding: Cp1252
 ### 4.2 Main and test compilation
 
 ```powershell
-javac --release 17 -encoding UTF-8 -cp postgresql-42.7.14.jar -d <temp>\lms-main-classes (37 main .java files)
+javac --release 17 -encoding UTF-8 -cp postgresql-42.7.14.jar -d <temp>\lms-main-classes (40 main .java files)
 ```
 
 ```text
 MAIN_COMPILE_OK
-MAIN_SOURCE_FILES=37
-MAIN_CLASS_FILES=37
+MAIN_SOURCE_FILES=40
+MAIN_CLASS_FILES=41
 ```
 
 ```powershell
-javac --release 17 -encoding UTF-8 -cp "<main-classes>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" -d <temp>\lms-test-classes (13 test .java files)
+javac --release 17 -encoding UTF-8 -cp "<main-classes>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" -d <temp>\lms-test-classes (14 test .java files)
 ```
 
 ```text
 TEST_COMPILE_OK
-TEST_SOURCE_FILES=13
-TEST_CLASS_FILES=13
+TEST_SOURCE_FILES=14
+TEST_CLASS_FILES=14
 ```
 
 `--release 17` targets class-file major version 61 and prevents accidental use of newer JDK APIs.
@@ -192,13 +192,13 @@ This is **standalone JUnit evidence**, not a Maven/Surefire result.
 Tomcat `JspC` was run with Tomcat 10.1.61 libraries, Apache Ant 1.10.15, `tomcat-juli.jar`, the compiled main classes, pgJDBC, and JSTL 3.0.1 API/implementation JARs.
 
 ```text
-INFO: Generation completed with [0] errors in [2562] milliseconds
+INFO: Generation completed with [0] errors in [3793] milliseconds
 EXIT_CODE=0
-JAVA_FILES=15
-CLASS_FILES=15
+JAVA_FILES=16
+CLASS_FILES=16
 ```
 
-All 15 JSP files under `WEB-INF/views` compiled, including shared `head.jsp`/`foot.jsp`, dashboard, books, members, loans, and error pages. JSTL taglib URIs use `jakarta.tags.core` and `jakarta.tags.functions`; no legacy `java.sun.com` URI or `javax.servlet` import remains.
+All 15 JSP files under `WEB-INF/views` plus the shared `WEB-INF/tags/pagination.tag` compiled, including shared `head.jsp`/`foot.jsp`, dashboard, books, members, loans, and error pages. JSTL taglib URIs use `jakarta.tags.core` and `jakarta.tags.functions`; no legacy `java.sun.com` URI or `javax.servlet` import remains.
 
 A JSP compile does not prove runtime rendering, request routing, or HTTP behavior. Those remain Person 2 work.
 
@@ -342,21 +342,21 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 | JDK 17 installation | Temurin `17.0.20.1+1`; `JAVA_HOME` and `PATH` set | Standalone JDK 17 used by Maven | **Verified** | `java`, `javac`, and `mvn -v` report 17 |
 | Maven installation | `3.9.16` on User `PATH` | Maven 3.9.x | **Verified** | `mvn -v` |
 | Maven project configuration | No `pom.xml` or wrapper | WAR packaging, release 17, UTF-8, Jakarta APIs, pgJDBC, JUnit/Surefire | **Missing** | Person 2 owns the build |
-| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 37 main and 13 test files compiled; POM still missing |
+| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 40 main and 14 test files compiled; POM still missing |
 | PostgreSQL server | `16.15` local cluster on `127.0.0.1:5432` | PostgreSQL 16.x with application role and databases | **Verified** | Schema/seed applied; SQL metadata and constraint probes passed |
 | PostgreSQL JDBC | `42.7.14` JAR | Driver on project runtime classpath | **Partially verified** | DAO tests executed; POM dependency still missing |
 | Tomcat installation | `10.1.61` installed | Tomcat 10.1.x | **Verified** | `version.bat`; previous HTTP 200 on stock pages |
 | Servlet namespace | Tomcat exposes `jakarta.servlet.*` | Project uses Jakarta Servlet 6.0 consistently | **Partially verified** | Runtime namespace confirmed; no Controller source or POM dependency yet |
-| JSP runtime | 15 project JSPs compiled by `JspC` | Project JSPs compile and render | **Partially verified** | 15/15 compile with 0 errors; no deployment/render |
+| JSP runtime | 15 project JSPs plus 1 shared tag compiled by `JspC` | Project JSPs compile and render | **Partially verified** | 16 generated Java/class files, 0 errors; no deployment/render |
 | JSTL | JSTL 3.0.1 JARs used for `JspC` | Correct Jakarta JSTL dependency and taglib URIs | **Partially verified** | `jakarta.tags.*` URIs compile; WAR dependency pending |
 | WAR packaging | No `pom.xml`, no WAR | Maven WAR with JSPs, classes, assets, `WEB-INF` | **Missing** | Person 2 creates the build |
 | Tomcat project deployment | Only stock Tomcat apps deployed | Project WAR deploys and serves routes | **Missing** | No project WAR |
 | JUnit 5/Surefire | Console standalone only | JUnit 5 + Surefire in Maven build | **Partially verified** | 124/124 standalone tests pass; no Surefire execution |
-| Project tests | 12 DAO test classes (7 gốc + 4 merge + 1 diacritic) | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
+| Project tests | 12 DAO test classes (7 original + 4 merged + 1 diacritic) plus `TestDatabase` and `TestFixtures` | Actual executed tests with reports | **Partially verified** | Standalone console evidence; no Maven reports |
 | Database schema/seed | `schema.sql`, `seed.sql` applied | Constraints, indexes, demo data | **Verified** | 8 tables, 11 named + 3 inline unique indexes, `unaccent` extension, seed counts, constraint probes |
 | Accent-insensitive search | `unaccent` on title, author, member name, category, publisher | `Chí Phèo` and `Chi Pheo` both find the same row | **Verified (DAO/SQL)** | 7 `DiacriticSearchTest` tests pass; HTTP form encoding still Person 2 |
 | 14-calendar-day rule | Schema check and DAO persistence implemented | Service computes due date; DB check enforces it; UI displays it | **Partially verified** | Constraint probe rejects +15; generated-date DAO test passes; Service not present |
-| UI assets and JSPs | 15 JSPs, `app.css`, `app.js` | Screens compile and render against real endpoints | **Partially verified** | JSP compile passed; no HTTP render |
+| UI assets and JSPs | 15 JSPs plus `pagination.tag`, `app.css`, `app.js` | Screens compile and render against real endpoints | **Partially verified** | JSP compile passed; no HTTP render |
 | Static EL properties | 214 references checked | No missing model property | **Verified** | Checker returned `EL_PROPERTY_CHECK_OK` after fixing pagination properties |
 | Git repository | `main` plus feature branch; `.gitignore` present | Repository with remote backup | **Verified** | Pushed to `origin`; feature branch prepared for PR |
 | Secrets hygiene | Password files outside workspace; restricted ACLs | No secrets in tracked files | **Verified** | Workspace scan found no credential value or secret file; only prose mentions the variable name |
@@ -374,11 +374,11 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 |---|---|---|
 | Schema, seed, constraints, and indexes exist | **PASS** | Applied to both databases; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes |
 | Constraint behavior is enforced | **PASS** | Seven rollback-safe probes passed on both databases |
-| Main and test source compile on JDK 17 | **PASS** | `javac --release 17 -encoding UTF-8`: 37 main, 13 test files |
+| Main and test source compile on JDK 17 | **PASS** | `javac --release 17 -encoding UTF-8`: 40 main, 14 test files |
 | Manual PK/FK/relation probes pass | **PASS** | 48 probes in rolled-back transaction on `library_test`; 0 failures; no leftover rows |
 | DAO tests pass against `library_test` | **PASS (standalone)** | 124/124 tests, 0 failures, exit code 0 |
 | Accent-insensitive Vietnamese search | **PASS (DAO/SQL)** | `unaccent` extension installed; `Chí Phèo`, `Chi Pheo`, `CHÍ PHÈO` all match; 7 tests pass |
-| JSPs compile with JSTL 3.0.1 | **PASS (standalone)** | Tomcat `JspC`: 15 Java files, 15 classes, 0 errors |
+| JSPs compile with JSTL 3.0.1 | **PASS (standalone)** | Tomcat `JspC`: 16 generated Java files (15 JSPs + 1 tag), 16 classes, 0 errors |
 | JSP model properties exist | **PASS** | 214 references checked; no missing property |
 | No secrets in the workspace | **PASS** | Scan found no credential value or secret file; only prose mentions the variable name |
 | Documentation reflects actual state | **PASS** | `database-design.md`, `implementation-plan.md`, `java-concepts-mapping.md`, and this audit updated |

@@ -1,16 +1,13 @@
 package com.library.dao.jdbc;
 
 import com.library.dao.BookDAO;
-import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.Page;
 import com.library.model.criteria.BookSearchCriteria;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +17,8 @@ import java.util.Optional;
  * JDBC implementation of {@link BookDAO}.
  *
  * <p>Handwritten SQL through JDBC; no ORM. Reads use enriched joins and an available-copy
- * subquery so list/detail views can render display fields directly.
+ * subquery so list/detail views can render display fields directly. Shared statement
+ * mechanics live in {@link JdbcSupport}.
  */
 public class JdbcBookDAO implements BookDAO {
 
@@ -52,21 +50,12 @@ public class JdbcBookDAO implements BookDAO {
     private static final String DELETE = "DELETE FROM books WHERE book_id = ?";
 
     private static final String ISBN_EXISTS =
-            "SELECT COUNT(*) FROM books WHERE isbn = ? AND (? IS NULL OR book_id <> ?)";
+            "SELECT COUNT(*) FROM books WHERE isbn = ? AND book_id <> ?";
 
     @Override
     public Optional<Book> findById(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_BY_ID)) {
-            ps.setInt(1, bookId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapBook(rs));
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find book by id: " + bookId, e);
-        }
+        return JdbcSupport.queryOne(c, FIND_BY_ID,
+                "Failed to find book by id: " + bookId, JdbcBookDAO::mapBook, bookId);
     }
 
     @Override
@@ -83,89 +72,32 @@ public class JdbcBookDAO implements BookDAO {
         params.add(criteria.getSize());
         params.add((long) criteria.getPage() * criteria.getSize());
 
-        try (PreparedStatement countPs = c.prepareStatement(countSb.toString())) {
-            fillParams(countPs, params.subList(0, filterParamCount));
-            try (ResultSet rs = countPs.executeQuery()) {
-                long total = rs.next() ? rs.getLong(1) : 0;
-                List<Book> content = new ArrayList<>();
-                if (total > 0) {
-                    try (PreparedStatement dataPs = c.prepareStatement(dataSb.toString())) {
-                        fillParams(dataPs, params);
-                        try (ResultSet drs = dataPs.executeQuery()) {
-                            while (drs.next()) {
-                                content.add(mapBook(drs));
-                            }
-                        }
-                    }
-                }
-                return new Page<>(content, total, criteria.getPage(), criteria.getSize());
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to search books", e);
-        }
+        return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
+                filterParamCount, criteria.getPage(), criteria.getSize(),
+                "Failed to search books", JdbcBookDAO::mapBook);
     }
 
     @Override
     public int insert(Connection c, Book book) {
-        try (PreparedStatement ps = c.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, trimIsbn(book.getIsbn()));
-            ps.setString(2, book.getTitle());
-            ps.setInt(3, book.getPublisherId());
-            ps.setInt(4, book.getCategoryId());
-            if (book.getPublicationYear() != null) {
-                ps.setInt(5, book.getPublicationYear());
-            } else {
-                ps.setNull(5, java.sql.Types.INTEGER);
-            }
-            int affected = ps.executeUpdate();
-            if (affected == 0) {
-                throw new DataAccessException("Insert book failed: no rows affected");
-            }
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (!keys.next()) {
-                    throw new DataAccessException("Insert book failed: no generated key");
-                }
-                book.setBookId(keys.getInt(1));
-            }
-            return affected;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to insert book: " + book.getIsbn(), e);
-        }
+        String isbn = trimIsbn(book.getIsbn());
+        return JdbcSupport.insert(c, INSERT, "Failed to insert book: " + isbn,
+                book::setBookId,
+                isbn, book.getTitle(), book.getPublisherId(), book.getCategoryId(),
+                book.getPublicationYear());
     }
 
     @Override
     public void update(Connection c, Book book) {
-        try (PreparedStatement ps = c.prepareStatement(UPDATE)) {
-            ps.setString(1, trimIsbn(book.getIsbn()));
-            ps.setString(2, book.getTitle());
-            ps.setInt(3, book.getPublisherId());
-            ps.setInt(4, book.getCategoryId());
-            if (book.getPublicationYear() != null) {
-                ps.setInt(5, book.getPublicationYear());
-            } else {
-                ps.setNull(5, java.sql.Types.INTEGER);
-            }
-            ps.setInt(6, book.getBookId());
-            int affected = ps.executeUpdate();
-            if (affected == 0) {
-                throw new DataAccessException("Update book failed: no rows affected, id=" + book.getBookId());
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to update book id=" + book.getBookId(), e);
-        }
+        JdbcSupport.updateExpectingRow(c, UPDATE,
+                "Failed to update book id=" + book.getBookId(),
+                trimIsbn(book.getIsbn()), book.getTitle(), book.getPublisherId(),
+                book.getCategoryId(), book.getPublicationYear(), book.getBookId());
     }
 
     @Override
     public void delete(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(DELETE)) {
-            ps.setInt(1, bookId);
-            int affected = ps.executeUpdate();
-            if (affected == 0) {
-                throw new DataAccessException("Delete book failed: no rows affected, id=" + bookId);
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to delete book id=" + bookId, e);
-        }
+        JdbcSupport.updateExpectingRow(c, DELETE,
+                "Failed to delete book id=" + bookId, bookId);
     }
 
     @Override
@@ -174,21 +106,9 @@ public class JdbcBookDAO implements BookDAO {
         if (value == null || value.isBlank()) {
             return false;
         }
-        try (PreparedStatement ps = c.prepareStatement(ISBN_EXISTS)) {
-            ps.setString(1, value);
-            if (excludeBookId == null) {
-                ps.setNull(2, java.sql.Types.INTEGER);
-                ps.setNull(3, java.sql.Types.INTEGER);
-            } else {
-                ps.setInt(2, excludeBookId);
-                ps.setInt(3, excludeBookId);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() && rs.getLong(1) > 0;
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to check ISBN exists: " + value, e);
-        }
+        int excluded = excludeBookId != null ? excludeBookId : -1;
+        return JdbcSupport.exists(c, ISBN_EXISTS,
+                "Failed to check ISBN exists: " + value, value, excluded);
     }
 
     private void appendSearchFilters(StringBuilder countSb, StringBuilder dataSb,
@@ -196,7 +116,7 @@ public class JdbcBookDAO implements BookDAO {
         if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
             countSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
             dataSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
-            String like = likePattern(criteria.getKeyword());
+            String like = JdbcSupport.likePattern(criteria.getKeyword());
             params.add(like);
             params.add(like);
         }
@@ -216,7 +136,7 @@ public class JdbcBookDAO implements BookDAO {
                     "WHERE ba.book_id = b.book_id AND unaccent(a.name) ILIKE unaccent(?))";
             countSb.append(clause);
             dataSb.append(clause);
-            params.add(likePattern(criteria.getAuthorName()));
+            params.add(JdbcSupport.likePattern(criteria.getAuthorName()));
         }
         if (Boolean.TRUE.equals(criteria.getAvailableOnly())) {
             String clause = " AND EXISTS (SELECT 1 FROM book_copies bc " +
@@ -226,27 +146,11 @@ public class JdbcBookDAO implements BookDAO {
         }
     }
 
-    private void fillParams(PreparedStatement ps, List<Object> params) throws SQLException {
-        for (int i = 0; i < params.size(); i++) {
-            ps.setObject(i + 1, params.get(i));
-        }
-    }
-
-    private String likePattern(String value) {
-        if (value == null) {
-            return null;
-        }
-        String escaped = value.trim()
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
-        return "%" + escaped + "%";
-    }
     private String trimIsbn(String isbn) {
         return isbn != null ? isbn.trim() : null;
     }
 
-    private Book mapBook(ResultSet rs) throws SQLException {
+    private static Book mapBook(ResultSet rs) throws SQLException {
         Book book = new Book();
         book.setBookId(rs.getInt("book_id"));
         book.setIsbn(rs.getString("isbn"));

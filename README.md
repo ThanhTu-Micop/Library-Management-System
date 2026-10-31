@@ -14,9 +14,10 @@ src/main/java/com/library/{model,dao,dao.jdbc,config,exception}
 src/main/java/com/library/model/{criteria,enums}
 src/main/resources/db/{schema.sql,seed.sql}
 src/main/webapp/WEB-INF/views/{books,members,loans,common,errors}
+src/main/webapp/WEB-INF/tags/pagination.tag
 src/main/webapp/assets/{css,js}
 src/test/java/com/library/{dao,dao/support}
-scripts/{run-tests.ps1,run-tests.sh}
+scripts/{run-tests.ps1,run-tests.sh,with-postgres.ps1}
 docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,test-suite-report}.md
 ```
 
@@ -79,7 +80,7 @@ javac --release 17 -encoding UTF-8 -d <main-out> -cp postgresql-42.7.14.jar (src
 javac --release 17 -encoding UTF-8 -d <test-out> -cp "<main-out>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" (src/test/java/**/*.java)
 ```
 
-Kết quả lần kiểm chứng gần nhất: **37/37 main**, **13/13 test** file biên dịch thành công (8 file gốc + 5 file test mới, gồm 4 file test merge và `DiacriticSearchTest`).
+Kết quả lần kiểm chứng gần nhất: **40/40 main**, **14/14 test** file biên dịch thành công (12 class test + `TestDatabase` + `TestFixtures`).
 
 ### 3.2 Kiểm thử DAO (JUnit Platform Console, không Maven/Surefire)
 
@@ -117,13 +118,49 @@ Trong repo có sẵn `scripts/run-tests.sh` (Linux/macOS) và `scripts/run-tests
 
 Bộ lọc `-TestClassFilter` / tham số đầu tiên nhận glob, ví dụ `*TransactionIsolation*`; script tự chuyển sang regex cho JUnit. Script tự quét classpath, không cần khai báo từng class test.
 
+### 3.5 Tự động bật/tắt PostgreSQL khi chạy dự án
+
+Dùng `scripts/with-postgres.ps1` để PostgreSQL chỉ sống trong thời gian lệnh chạy:
+
+```powershell
+# Hiện tại: chạy test với database tự bật/tắt
+.\scripts\with-postgres.ps1 { .\scripts\run-tests.ps1 }
+
+# Sau khi Person 2 hoàn tất Tomcat deployment
+.\scripts\with-postgres.ps1 { & "$env:CATALINA_HOME\bin\catalina.bat" run }
+```
+
+Cách hoạt động:
+1. Nếu PostgreSQL đã chạy sẵn, script dùng lại và **không tắt** khi lệnh kết thúc.
+2. Nếu chưa chạy, script bật `postgres.exe` nền, chờ `pg_isready`, rồi chạy lệnh.
+3. Khi lệnh kết thúc (kể cả lỗi), script gọi `pg_ctl stop -m fast` nếu chính nó đã bật database.
+4. Log bật database nằm ở `build/logs/postgres.out.log` và `build/logs/postgres.err.log`.
+
+Mặc định script dùng `%USERPROFILE%\dev\pgsql-16.15\bin` và `%USERPROFILE%\dev\pgdata-library`; có thể ghi đè bằng biến môi trường `PG_BIN` và `PGDATA`.
+
+Lưu ý: phải giữ cửa sổ terminal trong lúc chạy. Nếu đóng terminal bằng nút X, PowerShell có thể không kịp chạy khối `finally`; lần chạy sau script sẽ nhận ra database đang chạy và dùng lại.
+
+### 3.6 Mã dùng chung sau refactor
+
+Các phần lặp lại đã được gom về một nơi, hành vi DAO/UI không đổi:
+
+| Thành phần | Vai trò |
+|---|---|
+| `dao/jdbc/JdbcSupport.java` | Gắn tham số, escape LIKE, query một/nhiều dòng, đếm, insert lấy khóa tự sinh, update/delete và chạy cặp count + data cho phân trang |
+| `dao/jdbc/AbstractNamedEntityDAO.java` | CRUD/tìm kiếm/kiểm tra trùng tên dùng chung cho Author, Category, Publisher; mỗi DAO con chỉ khai báo metadata và map dòng |
+| `model/criteria/PageCriteria.java` | Trạng thái phân trang dùng chung (`page`, `size`) và giới hạn theo `AppConfig`; ba criteria kế thừa thay vì lặp field/getter/setter |
+| `test/dao/support/TestFixtures.java` | Tạo dữ liệu test chuẩn (sách, bản sao, thành viên, phiếu mượn) cho toàn bộ suite |
+| `WEB-INF/tags/pagination.tag` | Điều khiển Previous/Next dùng chung cho 4 màn hình danh sách, giữ nguyên query parameter hiện tại trừ `page` |
+
+Ngoài ra, `JdbcDashboardDAO` lấy số liệu mượn đang hoạt động/quá hạn từ `JdbcLoanDAO` để predicate chỉ tồn tại một chỗ; các hàm JavaScript không còn được gọi (`showFieldError`, `clearFieldErrors`, `initTogglePassword`) đã được xóa khỏi `app.js`. Kiểm tra SHA-256 xác nhận không có file nào trùng byte trong repo chính. Thư mục `Library-Management-System-tests` bên ngoài repo là bản bàn giao riêng, không bị sửa.
+
 ## 4. Giao diện (Person 1)
 
-15 JSP sử dụng JSTL 3.0.1 (`jakarta.tags.*`) + EL, CSS và JavaScript thuần (`app.js`). Không có Java GUI (Swing/AWT/JavaFX).
+15 JSP sử dụng JSTL 3.0.1 (`jakarta.tags.*`) + EL, CSS và JavaScript thuần (`app.js`). Không có Java GUI (Swing/AWT/JavaFX). Pagination được tách thành tag dùng chung `WEB-INF/tags/pagination.tag`.
 
 Màn hình: dashboard, danh sách/tìm sách, chi tiết sách, thêm/sửa sách, xóa sách, danh sách/thêm/sửa thành viên, mượn/trả, lịch sử mượn, sách quá hạn, trang lỗi 404/500.
 
-Tất cả JSP đã biên dịch bằng Tomcat `JspC` (15/15, 0 lỗi) và qua kiểm tra tham chiếu thuộc tính EL (320 biểu thức, 214 thuộc tính mô hình).
+Tất cả JSP và tag dùng chung đã biên dịch bằng Tomcat `JspC` (16 file Java sinh ra từ 15 JSP + 1 tag, 0 lỗi) và qua kiểm tra tham chiếu thuộc tính EL (320 biểu thức, 214 thuộc tính mô hình).
 
 ## 5. Phạm vi hoàn thành và phân công
 

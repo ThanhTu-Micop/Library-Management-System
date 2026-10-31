@@ -1,11 +1,9 @@
 package com.library.dao;
 
-import com.library.dao.jdbc.JdbcBookCopyDAO;
-import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcDashboardDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
-import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.model.Book;
 import com.library.model.BookCopy;
 import com.library.model.DashboardStats;
@@ -31,26 +29,16 @@ class JdbcDashboardDAOTest {
     @Test
     void getStatsWithFixedToday() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            TestDatabase.resetAll(c);
-            TestDatabase.seedReferenceData(c);
+            TestFixtures.prepare(c);
 
-            BookDAO bookDao = new JdbcBookDAO();
-            Book book = new Book(null, "978-DASH-000-001", "Dash Book", 1, 1, 2023);
-            bookDao.insert(c, book);
+            Book book = TestFixtures.insertBook(c, "978-DASH-000-001", "Dash Book", 2023);
+            TestFixtures.insertCopy(c, book, "DASH-CP-001", CopyStatus.AVAILABLE);
+            BookCopy borrowedOne = TestFixtures.insertCopy(c, book, "DASH-CP-002", CopyStatus.BORROWED);
+            BookCopy borrowedTwo = TestFixtures.insertCopy(c, book, "DASH-CP-003", CopyStatus.BORROWED);
 
-            BookCopyDAO copyDao = new JdbcBookCopyDAO();
-            BookCopy available = new BookCopy(null, book.getBookId(), "DASH-CP-001", CopyStatus.AVAILABLE);
-            BookCopy borrowedOne = new BookCopy(null, book.getBookId(), "DASH-CP-002", CopyStatus.BORROWED);
-            BookCopy borrowedTwo = new BookCopy(null, book.getBookId(), "DASH-CP-003", CopyStatus.BORROWED);
-            copyDao.insert(c, available);
-            copyDao.insert(c, borrowedOne);
-            copyDao.insert(c, borrowedTwo);
-
-            MemberDAO memberDao = new JdbcMemberDAO();
-            Member active = new Member(null, "M-DASH-001", "Dash Member", "dash@test.com", MemberStatus.ACTIVE);
-            Member inactive = new Member(null, "M-DASH-002", "Dash Inactive", "dash2@test.com", MemberStatus.INACTIVE);
-            memberDao.insert(c, active);
-            memberDao.insert(c, inactive);
+            Member active = TestFixtures.insertMember(c, "M-DASH-001", "Dash Member", "dash@test.com");
+            TestFixtures.insertMember(c, "M-DASH-002", "Dash Inactive", "dash2@test.com",
+                    MemberStatus.INACTIVE);
 
             LoanDAO loanDao = new JdbcLoanDAO();
             LocalDate today = LocalDate.of(2026, 10, 25);

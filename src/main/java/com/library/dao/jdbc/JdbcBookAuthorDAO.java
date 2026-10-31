@@ -9,7 +9,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,6 +18,7 @@ import java.util.Set;
  *
  * <p>Handwritten SQL through JDBC; no ORM. The DAO never commits, rolls back, or closes the
  * caller's connection, so author replacement participates in the service transaction.
+ * Single-statement reads and deletes reuse {@link JdbcSupport}.
  */
 public class JdbcBookAuthorDAO implements BookAuthorDAO {
 
@@ -37,22 +37,8 @@ public class JdbcBookAuthorDAO implements BookAuthorDAO {
 
     @Override
     public List<Author> findByBookId(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_BY_BOOK_ID)) {
-            ps.setInt(1, bookId);
-            try (ResultSet rs = ps.executeQuery()) {
-                List<Author> authors = new ArrayList<>();
-                while (rs.next()) {
-                    Author author = new Author();
-                    author.setAuthorId(rs.getInt("author_id"));
-                    author.setName(rs.getString("name"));
-                    author.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
-                    authors.add(author);
-                }
-                return authors;
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find authors for book id: " + bookId, e);
-        }
+        return JdbcSupport.queryList(c, FIND_BY_BOOK_ID,
+                "Failed to find authors for book id: " + bookId, JdbcBookAuthorDAO::mapAuthor, bookId);
     }
 
     @Override
@@ -66,19 +52,17 @@ public class JdbcBookAuthorDAO implements BookAuthorDAO {
             }
         }
 
-        try {
-            deleteByBookId(c, bookId);
-            if (uniqueIds.isEmpty()) {
-                return;
+        deleteByBookId(c, bookId);
+        if (uniqueIds.isEmpty()) {
+            return;
+        }
+        try (PreparedStatement ps = c.prepareStatement(INSERT_LINK)) {
+            ps.setInt(1, bookId);
+            for (Integer authorId : uniqueIds) {
+                ps.setInt(2, authorId);
+                ps.addBatch();
             }
-            try (PreparedStatement ps = c.prepareStatement(INSERT_LINK)) {
-                ps.setInt(1, bookId);
-                for (Integer authorId : uniqueIds) {
-                    ps.setInt(2, authorId);
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
+            ps.executeBatch();
         } catch (SQLException e) {
             throw new DataAccessException("Failed to replace authors for book id: " + bookId, e);
         }
@@ -86,11 +70,15 @@ public class JdbcBookAuthorDAO implements BookAuthorDAO {
 
     @Override
     public void deleteByBookId(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(DELETE_BY_BOOK_ID)) {
-            ps.setInt(1, bookId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to delete authors for book id: " + bookId, e);
-        }
+        JdbcSupport.update(c, DELETE_BY_BOOK_ID,
+                "Failed to delete authors for book id: " + bookId, bookId);
+    }
+
+    private static Author mapAuthor(ResultSet rs) throws SQLException {
+        Author author = new Author();
+        author.setAuthorId(rs.getInt("author_id"));
+        author.setName(rs.getString("name"));
+        author.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
+        return author;
     }
 }

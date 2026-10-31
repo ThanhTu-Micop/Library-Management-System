@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="ui" tagdir="/WEB-INF/tags" %>
 
 <c:import url="/WEB-INF/views/common/head.jsp">
     <c:param name="pageTitle" value="Overdue books" />
@@ -43,25 +44,7 @@
     </table>
 </div>
 
-<c:if test="${overduePage.totalPages gt 1}">
-    <div class="pagination mt-2">
-        <c:if test="${not overduePage.first}">
-            <c:url var="previousUrl" value="/loans/overdue">
-                <c:param name="page" value="${overduePage.page - 1}" />
-                <c:param name="size" value="${overduePage.size}" />
-            </c:url>
-            <a href="${previousUrl}" class="btn btn-sm btn-secondary">Previous</a>
-        </c:if>
-        <span class="current">Page <c:out value="${overduePage.page + 1}" /> / <c:out value="${overduePage.totalPages}" /></span>
-        <c:if test="${not overduePage.last}">
-            <c:url var="nextUrl" value="/loans/overdue">
-                <c:param name="page" value="${overduePage.page + 1}" />
-                <c:param name="size" value="${overduePage.size}" />
-            </c:url>
-            <a href="${nextUrl}" class="btn btn-sm btn-secondary">Next</a>
-        </c:if>
-    </div>
-</c:if>
+<ui:pagination pageData="${overduePage}" baseUrl="/loans/overdue" />
 
 <div class="mt-2">
     <a href="<c:url value='/loans/return' />" class="btn btn-primary">Return a book</a>

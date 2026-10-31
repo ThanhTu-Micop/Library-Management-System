@@ -23,6 +23,9 @@ public final class AppConfig {
     /** Default page size for paginated screens. */
     public static final int DEFAULT_PAGE_SIZE = 10;
 
+    /** Largest page size accepted from a request. */
+    public static final int MAX_PAGE_SIZE = 100;
+
     /** First page index (zero-based). */
     public static final int DEFAULT_PAGE = 0;
 

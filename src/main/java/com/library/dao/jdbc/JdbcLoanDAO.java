@@ -1,17 +1,14 @@
 package com.library.dao.jdbc;
 
 import com.library.dao.LoanDAO;
-import com.library.exception.DataAccessException;
 import com.library.model.Loan;
 import com.library.model.Page;
 import com.library.model.criteria.LoanSearchCriteria;
 import com.library.model.enums.LoanStatus;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,7 +21,8 @@ import java.util.Optional;
  * <p>Handwritten SQL through JDBC; no ORM. History and active-loan list reads join
  * {@code book_copies}, {@code books}, and {@code members} to populate display fields.
  * Locking queries stay on the base {@code loans} table so PostgreSQL does not reject
- * {@code FOR UPDATE} on the nullable side of an outer join.
+ * {@code FOR UPDATE} on the nullable side of an outer join. Shared statement mechanics live
+ * in {@link JdbcSupport}.
  */
 public class JdbcLoanDAO implements LoanDAO {
 
@@ -70,79 +68,38 @@ public class JdbcLoanDAO implements LoanDAO {
             "JOIN book_copies bc ON bc.copy_id = l.copy_id " +
             "WHERE bc.book_id = ?";
 
-    private static final String COUNT_ACTIVE = "SELECT COUNT(*) FROM loans WHERE return_date IS NULL";
+    private static final String COUNT_ACTIVE =
+            "SELECT COUNT(*) FROM loans WHERE return_date IS NULL";
 
     private static final String COUNT_OVERDUE =
             "SELECT COUNT(*) FROM loans WHERE return_date IS NULL AND due_date < ?";
 
     @Override
     public int insert(Connection c, Loan loan) {
-        try (PreparedStatement ps = c.prepareStatement(INSERT, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, loan.getCopyId());
-            ps.setInt(2, loan.getMemberId());
-            ps.setObject(3, loan.getLoanDate());
-            ps.setObject(4, loan.getDueDate());
-            if (loan.getReturnDate() != null) {
-                ps.setObject(5, loan.getReturnDate());
-            } else {
-                ps.setNull(5, java.sql.Types.DATE);
-            }
-            ps.setString(6, loan.getStatus() != null ? loan.getStatus().name() : LoanStatus.ACTIVE.name());
-            int affected = ps.executeUpdate();
-            if (affected == 0) {
-                throw new DataAccessException("Insert loan failed: no rows affected");
-            }
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (!keys.next()) {
-                    throw new DataAccessException("Insert loan failed: no generated key");
-                }
-                loan.setLoanId(keys.getInt(1));
-            }
-            return affected;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to insert loan for copyId=" + loan.getCopyId(), e);
-        }
+        return JdbcSupport.insert(c, INSERT,
+                "Failed to insert loan for copyId=" + loan.getCopyId(),
+                loan::setLoanId,
+                loan.getCopyId(), loan.getMemberId(), loan.getLoanDate(), loan.getDueDate(),
+                loan.getReturnDate(), statusName(loan.getStatus()));
     }
 
     @Override
     public Optional<Loan> findByIdForUpdate(Connection c, int loanId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_BY_ID_FOR_UPDATE)) {
-            ps.setInt(1, loanId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapLoan(rs));
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to lock loan id: " + loanId, e);
-        }
+        return JdbcSupport.queryOne(c, FIND_BY_ID_FOR_UPDATE,
+                "Failed to lock loan id: " + loanId, JdbcLoanDAO::mapLoan, loanId);
     }
 
     @Override
     public Optional<Loan> findActiveByCopyId(Connection c, int copyId) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_ACTIVE_BY_COPY_ID)) {
-            ps.setInt(1, copyId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapLoan(rs));
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find active loan by copy id: " + copyId, e);
-        }
+        return JdbcSupport.queryOne(c, FIND_ACTIVE_BY_COPY_ID,
+                "Failed to find active loan by copy id: " + copyId,
+                JdbcLoanDAO::mapLoan, copyId);
     }
 
     @Override
     public int markReturned(Connection c, int loanId, LocalDate returnDate) {
-        try (PreparedStatement ps = c.prepareStatement(MARK_RETURNED)) {
-            ps.setObject(1, returnDate);
-            ps.setInt(2, loanId);
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to mark loan returned id=" + loanId, e);
-        }
+        return JdbcSupport.update(c, MARK_RETURNED,
+                "Failed to mark loan returned id=" + loanId, returnDate, loanId);
     }
 
     @Override
@@ -159,74 +116,32 @@ public class JdbcLoanDAO implements LoanDAO {
         params.add(criteria.getSize());
         params.add((long) criteria.getPage() * criteria.getSize());
 
-        try (PreparedStatement countPs = c.prepareStatement(countSb.toString())) {
-            fillParams(countPs, params.subList(0, filterParamCount));
-            try (ResultSet rs = countPs.executeQuery()) {
-                long total = rs.next() ? rs.getLong(1) : 0;
-                List<Loan> content = new ArrayList<>();
-                if (total > 0) {
-                    try (PreparedStatement dataPs = c.prepareStatement(dataSb.toString())) {
-                        fillParams(dataPs, params);
-                        try (ResultSet drs = dataPs.executeQuery()) {
-                            while (drs.next()) {
-                                content.add(mapLoanWithDisplay(drs));
-                            }
-                        }
-                    }
-                }
-                return new Page<>(content, total, criteria.getPage(), criteria.getSize());
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to search loans", e);
-        }
+        return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
+                filterParamCount, criteria.getPage(), criteria.getSize(),
+                "Failed to search loans", JdbcLoanDAO::mapLoanWithDisplay);
     }
 
     @Override
     public List<Loan> findActive(Connection c) {
-        try (PreparedStatement ps = c.prepareStatement(FIND_ACTIVE);
-             ResultSet rs = ps.executeQuery()) {
-            List<Loan> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(mapLoanWithDisplay(rs));
-            }
-            return list;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to find active loans", e);
-        }
+        return JdbcSupport.queryList(c, FIND_ACTIVE,
+                "Failed to find active loans", JdbcLoanDAO::mapLoanWithDisplay);
     }
 
     @Override
     public boolean existsByBookId(Connection c, int bookId) {
-        try (PreparedStatement ps = c.prepareStatement(EXISTS_BY_BOOK_ID)) {
-            ps.setInt(1, bookId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() && rs.getLong(1) > 0;
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to check loan history by book id: " + bookId, e);
-        }
+        return JdbcSupport.exists(c, EXISTS_BY_BOOK_ID,
+                "Failed to check loan history by book id: " + bookId, bookId);
     }
 
     @Override
     public long countActive(Connection c) {
-        try (PreparedStatement ps = c.prepareStatement(COUNT_ACTIVE);
-             ResultSet rs = ps.executeQuery()) {
-            return rs.next() ? rs.getLong(1) : 0;
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to count active loans", e);
-        }
+        return JdbcSupport.queryLong(c, COUNT_ACTIVE, "Failed to count active loans");
     }
 
     @Override
     public long countOverdue(Connection c, LocalDate today) {
-        try (PreparedStatement ps = c.prepareStatement(COUNT_OVERDUE)) {
-            ps.setObject(1, today);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
-            }
-        } catch (SQLException e) {
-            throw new DataAccessException("Failed to count overdue loans as of " + today, e);
-        }
+        return JdbcSupport.queryLong(c, COUNT_OVERDUE,
+                "Failed to count overdue loans as of " + today, today);
     }
 
     private void appendFilters(StringBuilder countSb, StringBuilder dataSb,
@@ -272,13 +187,11 @@ public class JdbcLoanDAO implements LoanDAO {
         }
     }
 
-    private void fillParams(PreparedStatement ps, List<Object> params) throws SQLException {
-        for (int i = 0; i < params.size(); i++) {
-            ps.setObject(i + 1, params.get(i));
-        }
+    private static String statusName(LoanStatus status) {
+        return status != null ? status.name() : LoanStatus.ACTIVE.name();
     }
 
-    private Loan mapLoan(ResultSet rs) throws SQLException {
+    private static Loan mapLoan(ResultSet rs) throws SQLException {
         Loan loan = new Loan();
         loan.setLoanId(rs.getInt("loan_id"));
         loan.setCopyId(rs.getInt("copy_id"));
@@ -292,7 +205,7 @@ public class JdbcLoanDAO implements LoanDAO {
         return loan;
     }
 
-    private Loan mapLoanWithDisplay(ResultSet rs) throws SQLException {
+    private static Loan mapLoanWithDisplay(ResultSet rs) throws SQLException {
         Loan loan = mapLoan(rs);
         loan.setBookTitle(rs.getString("book_title"));
         loan.setCopyCode(rs.getString("copy_code"));

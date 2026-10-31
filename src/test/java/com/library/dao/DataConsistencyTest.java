@@ -1,13 +1,13 @@
 package com.library.dao;
 
 import com.library.dao.jdbc.JdbcAuthorDAO;
-import com.library.dao.jdbc.JdbcBookCopyDAO;
 import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcCategoryDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.jdbc.JdbcPublisherDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Author;
 import com.library.model.Book;
@@ -18,7 +18,6 @@ import com.library.model.Member;
 import com.library.model.Publisher;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
-import com.library.model.enums.MemberStatus;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -57,35 +56,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class DataConsistencyTest {
 
     private final BookDAO bookDao = new JdbcBookDAO();
-    private final BookCopyDAO copyDao = new JdbcBookCopyDAO();
     private final MemberDAO memberDao = new JdbcMemberDAO();
     private final LoanDAO loanDao = new JdbcLoanDAO();
     private final CategoryDAO categoryDao = new JdbcCategoryDAO();
     private final AuthorDAO authorDao = new JdbcAuthorDAO();
     private final PublisherDAO publisherDao = new JdbcPublisherDAO();
-
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = new Book(null, isbn, title, 1, 1, 2020);
-        bookDao.insert(c, book);
-        return book;
-    }
-
-    private BookCopy insertCopy(Connection c, Book book, String code, CopyStatus status) {
-        BookCopy copy = new BookCopy(null, book.getBookId(), code, status);
-        copyDao.insert(c, copy);
-        return copy;
-    }
-
-    private Member insertMember(Connection c, String code, String name, String email) {
-        Member m = new Member(null, code, name, email, MemberStatus.ACTIVE);
-        memberDao.insert(c, m);
-        return m;
-    }
 
     // ------------------------------------------------------------------
     // Email uniqueness (case-insensitive): INSERT + UPDATE
@@ -94,11 +69,11 @@ class DataConsistencyTest {
     @Test
     void emailUniqueCaseInsensitiveOnInsert() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertMember(c, "M-1", "Member One", "User@Example.com");
+            TestFixtures.prepare(c);
+            TestFixtures.insertMember(c, "M-1", "Member One", "User@Example.com");
 
             DataAccessException error = assertThrows(DataAccessException.class,
-                    () -> insertMember(c, "M-2", "Member Two", "USER@example.COM"));
+                    () -> TestFixtures.insertMember(c, "M-2", "Member Two", "USER@example.COM"));
             assertEquals("23505", error.getSqlState());
         }
     }
@@ -106,9 +81,9 @@ class DataConsistencyTest {
     @Test
     void emailUniqueCaseInsensitiveOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertMember(c, "M-1", "First", "first@test.com");
-            Member second = insertMember(c, "M-2", "Second", "second@test.com");
+            TestFixtures.prepare(c);
+            TestFixtures.insertMember(c, "M-1", "First", "first@test.com");
+            Member second = TestFixtures.insertMember(c, "M-2", "Second", "second@test.com");
 
             // Try to update second's email to collide with first's email (different case).
             second.setEmail("FIRST@TEST.COM");
@@ -122,8 +97,8 @@ class DataConsistencyTest {
     @Test
     void emailExistsExcludesSelf() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member m = insertMember(c, "M-1", "Self", "self@test.com");
+            TestFixtures.prepare(c);
+            Member m = TestFixtures.insertMember(c, "M-1", "Self", "self@test.com");
 
             // emailExists with the member's own email and own id must return false
             // (otherwise the controller would reject every edit form).
@@ -142,11 +117,11 @@ class DataConsistencyTest {
     @Test
     void memberCodeUniqueOnInsert() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertMember(c, "M-DUP", "First", "first@test.com");
+            TestFixtures.prepare(c);
+            TestFixtures.insertMember(c, "M-DUP", "First", "first@test.com");
 
             DataAccessException error = assertThrows(DataAccessException.class,
-                    () -> insertMember(c, "M-DUP", "Second", "second@test.com"));
+                    () -> TestFixtures.insertMember(c, "M-DUP", "Second", "second@test.com"));
             assertEquals("23505", error.getSqlState());
         }
     }
@@ -154,9 +129,9 @@ class DataConsistencyTest {
     @Test
     void memberCodeUniqueOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertMember(c, "M-A", "A", "a@test.com");
-            Member b = insertMember(c, "M-B", "B", "b@test.com");
+            TestFixtures.prepare(c);
+            TestFixtures.insertMember(c, "M-A", "A", "a@test.com");
+            Member b = TestFixtures.insertMember(c, "M-B", "B", "b@test.com");
 
             b.setMemberCode("M-A");
             DataAccessException error = assertThrows(DataAccessException.class,
@@ -168,8 +143,8 @@ class DataConsistencyTest {
     @Test
     void memberCodeExistsExcludesSelf() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member m = insertMember(c, "M-SELF", "Self", "self@test.com");
+            TestFixtures.prepare(c);
+            Member m = TestFixtures.insertMember(c, "M-SELF", "Self", "self@test.com");
             assertFalse(memberDao.memberCodeExists(c, "M-SELF", m.getMemberId()));
             assertTrue(memberDao.memberCodeExists(c, "M-SELF", null));
         }
@@ -182,11 +157,11 @@ class DataConsistencyTest {
     @Test
     void isbnUniqueOnInsert() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, "978-DUP-000-000-001", "First");
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, "978-DUP-000-000-001", "First");
 
             DataAccessException error = assertThrows(DataAccessException.class,
-                    () -> insertBook(c, "978-DUP-000-000-001", "Second"));
+                    () -> TestFixtures.insertBook(c, "978-DUP-000-000-001", "Second"));
             assertEquals("23505", error.getSqlState());
         }
     }
@@ -194,9 +169,9 @@ class DataConsistencyTest {
     @Test
     void isbnUniqueOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, "978-U1-000-000-001", "Book One");
-            Book two = insertBook(c, "978-U2-000-000-001", "Book Two");
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, "978-U1-000-000-001", "Book One");
+            Book two = TestFixtures.insertBook(c, "978-U2-000-000-001", "Book Two");
 
             two.setIsbn("978-U1-000-000-001");
             DataAccessException error = assertThrows(DataAccessException.class,
@@ -208,8 +183,8 @@ class DataConsistencyTest {
     @Test
     void isbnExistsExcludesSelf() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-OWN-000-000-001", "Self ISBN");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-OWN-000-000-001", "Self ISBN");
             assertFalse(bookDao.isbnExists(c, "978-OWN-000-000-001", book.getBookId()));
             assertTrue(bookDao.isbnExists(c, "978-OWN-000-000-001", null));
         }
@@ -218,8 +193,8 @@ class DataConsistencyTest {
     @Test
     void isbnTrimmedOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-TR-000-000-001", "Trim Update");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-TR-000-000-001", "Trim Update");
 
             book.setIsbn("  978-NEW-000-000-001  ");
             bookDao.update(c, book);
@@ -233,7 +208,7 @@ class DataConsistencyTest {
     @Test
     void isbnLengthBoundaries() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
 
             // 13 chars accepted (lower bound).
             Book thirteen = new Book(null, "1234567890123", "Thirteen", 1, 1, 2020);
@@ -262,7 +237,7 @@ class DataConsistencyTest {
     @Test
     void categoryNameUniqueCaseInsensitiveOnInsert() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             // Use a name that is not already present in seedReferenceData(), otherwise the
             // first insert fails before the case-insensitive duplicate check is exercised.
             categoryDao.insert(c, new Category(null, "Drama"));
@@ -279,7 +254,7 @@ class DataConsistencyTest {
         // index directly with a raw SQL UPDATE. The index ux_categories_name_lower
         // must reject a colliding UPDATE just as it rejects a colliding INSERT.
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             // Both names must be absent from seedReferenceData() so the initial inserts succeed.
             categoryDao.insert(c, new Category(null, "Poetry"));
             Category other = new Category(null, "Drama");
@@ -301,8 +276,8 @@ class DataConsistencyTest {
     @Test
     void blankEmailNormalizedToNullOnInsert() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member m = insertMember(c, "M-B1", "Blank Insert", "   ");
+            TestFixtures.prepare(c);
+            Member m = TestFixtures.insertMember(c, "M-B1", "Blank Insert", "   ");
 
             Member found = memberDao.findById(c, m.getMemberId()).orElseThrow();
             assertNull(found.getEmail(),
@@ -315,8 +290,8 @@ class DataConsistencyTest {
     @Test
     void blankEmailNormalizedToNullOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member m = insertMember(c, "M-B2", "Blank Update", "real@test.com");
+            TestFixtures.prepare(c);
+            Member m = TestFixtures.insertMember(c, "M-B2", "Blank Update", "real@test.com");
 
             m.setEmail("   ");
             memberDao.update(c, m);
@@ -330,8 +305,8 @@ class DataConsistencyTest {
     @Test
     void nullEmailIsPreservedOnUpdate() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member m = insertMember(c, "M-N1", "Null Update", "real@test.com");
+            TestFixtures.prepare(c);
+            Member m = TestFixtures.insertMember(c, "M-N1", "Null Update", "real@test.com");
 
             m.setEmail(null);
             memberDao.update(c, m);
@@ -348,7 +323,7 @@ class DataConsistencyTest {
     @Test
     void publicationYearBoundaries() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
 
             // Lower bound 1000 accepted.
             assertEquals(1, bookDao.insert(c, new Book(null, "978-Y1-000-000-001", "Year 1000", 1, 1, 1000)));
@@ -372,8 +347,8 @@ class DataConsistencyTest {
     @Test
     void copyStatusInvalidValueRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-CS-000-000-001", "Copy Status Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-CS-000-000-001", "Copy Status Book");
 
             // Use raw SQL because CopyStatus enum prevents the DAO path from compiling.
             SQLException ex = assertThrows(SQLException.class, () -> {
@@ -392,10 +367,10 @@ class DataConsistencyTest {
     @Test
     void loanStatusInvalidValueRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-LS-000-000-001", "Loan Status Book");
-            BookCopy copy = insertCopy(c, book, "LS-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-LS-001", "Loan Status Member", "ls@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-LS-000-000-001", "Loan Status Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "LS-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-LS-001", "Loan Status Member", "ls@test.com");
 
             SQLException ex = assertThrows(SQLException.class, () -> {
                 try (PreparedStatement ps = c.prepareStatement(
@@ -416,7 +391,7 @@ class DataConsistencyTest {
     @Test
     void memberStatusInvalidValueRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
 
             SQLException ex = assertThrows(SQLException.class, () -> {
                 try (PreparedStatement ps = c.prepareStatement(
@@ -439,10 +414,10 @@ class DataConsistencyTest {
     @Test
     void updateLoanToReturnedWithoutReturnDateIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-UR-000-000-001", "Update Returned No Date");
-            BookCopy copy = insertCopy(c, book, "UR-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-UR-001", "Member UR", "ur@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-UR-000-000-001", "Update Returned No Date");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "UR-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-UR-001", "Member UR", "ur@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 4, 1);
             Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
@@ -468,10 +443,10 @@ class DataConsistencyTest {
     @Test
     void updateLoanToActiveWithReturnDateIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-UA-000-000-001", "Update Active With Date");
-            BookCopy copy = insertCopy(c, book, "UA-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-UA-001", "Member UA", "ua@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-UA-000-000-001", "Update Active With Date");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "UA-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-UA-001", "Member UA", "ua@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 3, 1);
             Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
@@ -492,10 +467,10 @@ class DataConsistencyTest {
     @Test
     void updateLoanDueDateNotFourteenDaysIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-UD-000-000-001", "Update Due Date");
-            BookCopy copy = insertCopy(c, book, "UD-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-UD-001", "Member UD", "ud@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-UD-000-000-001", "Update Due Date");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "UD-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-UD-001", "Member UD", "ud@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 5, 1);
             Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
@@ -516,10 +491,10 @@ class DataConsistencyTest {
     @Test
     void updateLoanReturnDateBeforeLoanDateIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-UB-000-000-001", "Update Return Before Loan");
-            BookCopy copy = insertCopy(c, book, "UB-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-UB-001", "Member UB", "ub@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-UB-000-000-001", "Update Return Before Loan");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "UB-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-UB-001", "Member UB", "ub@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 6, 1);
             Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
@@ -544,7 +519,7 @@ class DataConsistencyTest {
     @Test
     void authorAndPublisherInsertAssignsIdAndCreatedAt() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Author author = new Author(null, "Test Author X");
             assertEquals(1, authorDao.insert(c, author));
             assertNotNull(author.getAuthorId());
@@ -560,7 +535,7 @@ class DataConsistencyTest {
     @Test
     void categoryFindByIdReturnsEmptyForUnknownId() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             assertFalse(categoryDao.findById(c, 999_999).isPresent());
         }
     }

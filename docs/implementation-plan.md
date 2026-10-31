@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.3 |
-| Date | 2026-10-27 |
+| Version | 1.4 |
+| Date | 2026-10-30 |
 | Status | Person 1 implementation complete and verified with standalone tools; Person 2 build, deployment, and HTTP integration remain blocked |
 | Person 1 | Database, SQL, JDBC/DAO, UI/UX |
 | Person 2 | Controller, Service/business rules, integration |
@@ -29,7 +29,8 @@ Authentication and role-based authorization are outside the current MVP scope. T
 
 | Item | Status |
 |---|---|
-| Application source code | Person 1 source present: 37 main Java files, 13 test source files (12 test classes plus `TestDatabase`), 15 JSPs, CSS/JS, and SQL scripts |
+| Application source code | Person 1 source present: 40 main Java files, 14 test source files (12 test classes plus `TestDatabase` and `TestFixtures`), 15 JSPs plus 1 shared tag, CSS/JS, and SQL scripts |
+| Shared code | `JdbcSupport`, `AbstractNamedEntityDAO<T>`, `PageCriteria`, `TestFixtures`, and `pagination.tag` remove repeated JDBC, criteria, fixture, and pagination code |
 | Repository contents | `docs/`, `src/main/java`, `src/main/resources/db`, `src/main/webapp`, and `src/test/java`; no Maven build or web deployment descriptors |
 | Git repository | Initialized on `main` with `origin`; feature branch `feature/test-suite-and-vietnamese-search` prepared for PR |
 | Java JDK | Temurin JDK `17.0.20.1+1` installed at `C:\Users\BINHND\dev\jdk-17`; `JAVA_HOME` and `PATH` configured |
@@ -133,12 +134,14 @@ src/main/java/com/library/util/**                        [P2]
 
 src/main/webapp/assets/**                                [P1]
 src/main/webapp/WEB-INF/views/**                         [P1]
+src/main/webapp/WEB-INF/tags/**                          [P1]
 src/main/webapp/WEB-INF/web.xml                          [P2]
 src/main/webapp/META-INF/context.xml                     [P2]
 
 pom.xml                                                   [P2 owner, P1 review]
 src/test/java/com/library/dao/**                         [P1]
 src/test/java/com/library/dao/support/TestDatabase.java  [P1]
+src/test/java/com/library/dao/support/TestFixtures.java  [P1]
 src/test/java/com/library/service/**                     [P2]
 src/test/java/com/library/controller/**                  [P2]
 
@@ -163,7 +166,7 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 | PostgreSQL | `16.15` | `C:\Users\BINHND\dev\pgsql-16.15`; local cluster verified |
 | Tomcat | `10.1.61` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61`; HTTP/JSP verified |
 | Servlet API | Jakarta Servlet `6.0` | Tomcat runtime contains `jakarta/servlet/http/HttpServlet.class` |
-| JSP/JSTL | JSP `3.1` / JSTL `3.0.1` (`jakarta.tags.*`) | All 15 JSPs compiled with Tomcat `JspC` and temporary JSTL 3.0.1 JARs; WAR dependency pending in project |
+| JSP/JSTL | JSP `3.1` / JSTL `3.0.1` (`jakarta.tags.*`) | 15 JSPs plus the shared `pagination.tag` compiled with Tomcat `JspC` and temporary JSTL 3.0.1 JARs; WAR dependency pending in project |
 | PostgreSQL JDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar`; local `SELECT 1` passed and DAO tests executed |
 | Tests | JUnit `5.14.4` console standalone | 124/124 DAO tests pass outside Maven; Surefire integration pending |
 | Compilation target | `maven.compiler.release=17` | Main and test sources compiled with `javac --release 17`; POM still pending |
@@ -179,10 +182,10 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 | Tomcat `servlet-api.jar` contains Jakarta `HttpServlet` | **PASS** | `jakarta/servlet/http/HttpServlet.class` present |
 | PostgreSQL databases and application role | **PASS** | `library_db`, `library_test`, and `library_app` connection verified |
 | JDBC driver smoke test | **PASS** | Driver `42.7.14`, server `16.15`, `SELECT 1` returned `1` |
-| Main and test source compilation | **PASS** | `javac --release 17 -encoding UTF-8`: 37/37 main files and 13/13 test files compiled |
+| Main and test source compilation | **PASS** | `javac --release 17 -encoding UTF-8`: 40/40 main files and 14/14 test files compiled |
 | Schema, seed, and constraints | **PASS** | Applied to `library_db` and `library_test`; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes; seed counts `3/4/4/4/8/3/3/4` |
 | DAO tests | **PASS (standalone)** | JUnit Platform Console: 124 tests found, 124 successful, 0 failed |
-| JSP compilation | **PASS (standalone)** | Tomcat `JspC`: 15 generated Java files, 15 class files, 0 errors |
+| JSP compilation | **PASS (standalone)** | Tomcat `JspC`: 16 generated Java files (15 JSPs + 1 tag), 16 class files, 0 errors |
 | Static EL property check | **PASS** | 320 expressions scanned; 214 model property references checked; no missing property |
 | Manual PK/FK/relation probes | **PASS** | 48 probes (PK, unique, FK insert/update, ON DELETE RESTRICT/CASCADE, active-loan partial unique, CHECK, orphan check) all pass inside a rolled-back transaction on `library_test` |
 | Project build, WAR, and deployment | **BLOCKED** | No `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, or WAR |
@@ -353,7 +356,8 @@ library-management-system/
 │   │   │   │   └── criteria/
 │   │   │   │       ├── BookSearchCriteria.java
 │   │   │   │       ├── LoanSearchCriteria.java
-│   │   │   │       └── MemberSearchCriteria.java
+│   │   │   │       ├── MemberSearchCriteria.java
+│   │   │   │       └── PageCriteria.java
 │   │   │   ├── dao/
 │   │   │   │   ├── AuthorDAO.java
 │   │   │   │   ├── BookAuthorDAO.java
@@ -365,6 +369,7 @@ library-management-system/
 │   │   │   │   ├── MemberDAO.java
 │   │   │   │   ├── PublisherDAO.java
 │   │   │   │   └── jdbc/
+│   │   │   │       ├── AbstractNamedEntityDAO.java
 │   │   │   │       ├── JdbcAuthorDAO.java
 │   │   │   │       ├── JdbcBookAuthorDAO.java
 │   │   │   │       ├── JdbcBookCopyDAO.java
@@ -373,7 +378,8 @@ library-management-system/
 │   │   │   │       ├── JdbcDashboardDAO.java
 │   │   │   │       ├── JdbcLoanDAO.java
 │   │   │   │       ├── JdbcMemberDAO.java
-│   │   │   │       └── JdbcPublisherDAO.java
+│   │   │   │       ├── JdbcPublisherDAO.java
+│   │   │   │       └── JdbcSupport.java
 │   │   │   ├── service/
 │   │   │   │   ├── BookService.java
 │   │   │   │   ├── DashboardService.java
@@ -401,6 +407,7 @@ library-management-system/
 │   │       ├── META-INF/context.xml
 │   │       └── WEB-INF/
 │   │           ├── web.xml
+│   │           ├── tags/pagination.tag
 │   │           └── views/
 │   │               ├── common/
 │   │               ├── dashboard.jsp
@@ -417,12 +424,19 @@ library-management-system/
 │       │   ├── JdbcLoanDAOTest.java
 │       │   ├── JdbcMemberDAOTest.java
 │       │   ├── JdbcReferenceDAOTest.java
-│       │   └── support/TestDatabase.java
+│       │   ├── LoanBusinessLogicTest.java
+│       │   ├── DataConsistencyTest.java
+│       │   ├── CrossTableSynchronizationTest.java
+│       │   ├── TransactionIsolationTest.java
+│       │   ├── DiacriticSearchTest.java
+│       │   └── support/
+│       │       ├── TestDatabase.java
+│       │       └── TestFixtures.java
 │       ├── service/
 │       └── util/
 ```
 
-The tree is the target layout, not a claim that every file exists. Person 1 source, JSPs, SQL, tests, and the five current docs are present; `pom.xml`, README, `.gitignore`, `web.xml`, `context.xml`, Service/Controller/filter files, and the three Person 2 docs remain planned. Ownership follows the matrix in section 4.
+The tree is the target layout, not a claim that every file exists. Person 1 source, JSPs, tags, SQL, tests, README, `.gitignore`, and the six current docs are present; `pom.xml`, `web.xml`, `context.xml`, Service/Controller/filter files, and the three Person 2 docs remain planned. Ownership follows the matrix in section 4.
 
 ## 9. Business Function Ownership and Flow
 
@@ -667,7 +681,7 @@ Integration tests use a separate `library_test` database and are gated by test e
 
 ### Status
 
-Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 124 tests found, 124 successful, 0 failed, exit code 0. Main sources compile with `javac --release 17` (37 files), test sources compile (13 files), and all 15 JSPs compile with Tomcat `JspC` and JSTL 3.0.1 (0 errors). Additionally, 48 manual PK/FK/relation probes pass inside a rolled-back transaction on `library_test`. These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
+Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 124 tests found, 124 successful, 0 failed, exit code 0. Main sources compile with `javac --release 17` (40 files), test sources compile (14 files), and all 15 JSPs plus the shared tag compile with Tomcat `JspC` and JSTL 3.0.1 (16 generated files, 0 errors). Additionally, 48 manual PK/FK/relation probes pass inside a rolled-back transaction on `library_test`. These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
 
 ## 14. Documentation Plan
 

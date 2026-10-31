@@ -5,6 +5,7 @@ import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -34,15 +35,10 @@ class JdbcMemberDAOTest {
     private final BookCopyDAO copyDao = new JdbcBookCopyDAO();
     private final LoanDAO loanDao = new JdbcLoanDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
     @Test
     void insertAndFindById() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Member member = new Member(null, "M-TEST-001", "Nguyen Van Test", "nvt@test.com", MemberStatus.ACTIVE);
             int affected = dao.insert(c, member);
             assertEquals(1, affected);
@@ -58,7 +54,7 @@ class JdbcMemberDAOTest {
     @Test
     void memberCodeMustBeUnique() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Member(null, "M-UNQ-001", "User One", "u1@test.com", MemberStatus.ACTIVE));
             assertTrue(dao.memberCodeExists(c, "M-UNQ-001", null));
             assertFalse(dao.memberCodeExists(c, "M-UNQ-002", null));
@@ -72,7 +68,7 @@ class JdbcMemberDAOTest {
     @Test
     void emailMustBeUniqueCaseInsensitively() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Member(null, "M-EML-001", "User Two", "Two@Test.com", MemberStatus.ACTIVE));
             assertTrue(dao.emailExists(c, "two@test.com", null));
             assertTrue(dao.emailExists(c, "TWO@test.COM", null));
@@ -87,7 +83,7 @@ class JdbcMemberDAOTest {
     @Test
     void blankEmailIsNormalizedToNull() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Member member = new Member(null, "M-BLANK-001", "Blank Email", "   ", MemberStatus.ACTIVE);
             dao.insert(c, member);
 
@@ -100,7 +96,7 @@ class JdbcMemberDAOTest {
     @Test
     void searchByStatusAndKeyword() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Member(null, "M-S-001", "Search Active", "sa@test.com", MemberStatus.ACTIVE));
             dao.insert(c, new Member(null, "M-S-002", "Search Inactive", "si@test.com", MemberStatus.INACTIVE));
 
@@ -121,7 +117,7 @@ class JdbcMemberDAOTest {
     @Test
     void activeLoanCountIsPopulated() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Member member = new Member(null, "M-COUNT-001", "Count Member", "count@test.com", MemberStatus.ACTIVE);
             dao.insert(c, member);
 

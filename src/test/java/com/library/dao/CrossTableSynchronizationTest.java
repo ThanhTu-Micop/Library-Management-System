@@ -7,6 +7,7 @@ import com.library.dao.jdbc.JdbcDashboardDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Author;
 import com.library.model.Book;
@@ -70,40 +71,6 @@ class CrossTableSynchronizationTest {
     private final LoanDAO loanDao = new JdbcLoanDAO();
     private final DashboardDAO dashboardDao = new JdbcDashboardDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = new Book(null, isbn, title, 1, 1, 2020);
-        bookDao.insert(c, book);
-        return book;
-    }
-
-    private BookCopy insertCopy(Connection c, Book book, String code, CopyStatus status) {
-        BookCopy copy = new BookCopy(null, book.getBookId(), code, status);
-        copyDao.insert(c, copy);
-        return copy;
-    }
-
-    private Member insertMember(Connection c, String code, String name, String email) {
-        return insertMember(c, code, name, email, MemberStatus.ACTIVE);
-    }
-
-    private Member insertMember(Connection c, String code, String name, String email, MemberStatus status) {
-        Member m = new Member(null, code, name, email, status);
-        memberDao.insert(c, m);
-        return m;
-    }
-
-    private Loan insertActiveLoan(Connection c, BookCopy copy, Member member, LocalDate loanDate) {
-        Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
-        loanDao.insert(c, loan);
-        return loan;
-    }
-
     private long rawCount(Connection c, String sql) throws SQLException {
         try (Statement st = c.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -135,12 +102,12 @@ class CrossTableSynchronizationTest {
         // This test asserts the CURRENT gap behavior; if a future fix adds auto-sync,
         // the final assertion must change to CopyStatus.BORROWED.
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-G1-000-000-001", "Gap Sync Insert");
-            BookCopy copy = insertCopy(c, book, "G1-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-G1-001", "Member G1", "g1@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-G1-000-000-001", "Gap Sync Insert");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "G1-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-G1-001", "Member G1", "g1@test.com");
 
-            insertActiveLoan(c, copy, member, LocalDate.of(2026, 10, 25));
+            TestFixtures.insertActiveLoan(c, copy, member, LocalDate.of(2026, 10, 25));
 
             // Reload the copy directly from the table to bypass any DAO caching.
             BookCopy reloaded = copyDao.findByIdForUpdate(c, copy.getCopyId()).orElseThrow();
@@ -156,13 +123,13 @@ class CrossTableSynchronizationTest {
         // returned, the copy will STAY BORROWED until the Service explicitly calls
         // updateStatus(AVAILABLE).
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-G2-000-000-001", "Gap Sync Return");
-            BookCopy copy = insertCopy(c, book, "G2-CP-001", CopyStatus.BORROWED);
-            Member member = insertMember(c, "M-G2-001", "Member G2", "g2@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-G2-000-000-001", "Gap Sync Return");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "G2-CP-001", CopyStatus.BORROWED);
+            Member member = TestFixtures.insertMember(c, "M-G2-001", "Member G2", "g2@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 10, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(5));
 
             BookCopy reloaded = copyDao.findByIdForUpdate(c, copy.getCopyId()).orElseThrow();
@@ -178,14 +145,14 @@ class CrossTableSynchronizationTest {
         // that the manual sync DOES keep the two tables consistent — the gap is the lack
         // of automatic enforcement, not a fundamental bug in the DAOs.
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-MS-000-000-001", "Manual Sync");
-            BookCopy copy = insertCopy(c, book, "MS-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-MS-001", "Member MS", "ms@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-MS-000-000-001", "Manual Sync");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "MS-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-MS-001", "Member MS", "ms@test.com");
 
             // Borrow: insert loan + flip status to BORROWED.
             LocalDate loanDate = LocalDate.of(2026, 10, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
             assertEquals(1, copyDao.updateStatus(c, copy.getCopyId(), CopyStatus.BORROWED));
             assertEquals(CopyStatus.BORROWED,
                     copyDao.findByIdForUpdate(c, copy.getCopyId()).orElseThrow().getStatus());
@@ -209,7 +176,7 @@ class CrossTableSynchronizationTest {
     @Test
     void dashboardCountsMatchUnderlyingTablesOnEmptyDatabase() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             // seedReferenceData adds 3 publishers, 4 categories, 4 authors — no books/copies/members/loans.
             DashboardStats stats = dashboardDao.getStats(c, LocalDate.of(2026, 10, 25));
             assertEquals(rawCount(c, "SELECT COUNT(*) FROM books"), stats.getTotalBooks());
@@ -234,7 +201,7 @@ class CrossTableSynchronizationTest {
     @Test
     void dashboardCountsStayInSyncAfterEachMutation() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             LocalDate today = LocalDate.of(2026, 10, 25);
 
             // Initial: empty.
@@ -246,9 +213,9 @@ class CrossTableSynchronizationTest {
             assertEquals(0, s0.getAvailableCopies());
 
             // Insert 1 book + 2 copies (1 AVAILABLE, 1 BORROWED).
-            Book book = insertBook(c, "978-DS-000-000-001", "Dashboard Sync Book");
-            BookCopy avail = insertCopy(c, book, "DS-CP-001", CopyStatus.AVAILABLE);
-            BookCopy borrowed = insertCopy(c, book, "DS-CP-002", CopyStatus.BORROWED);
+            Book book = TestFixtures.insertBook(c, "978-DS-000-000-001", "Dashboard Sync Book");
+            BookCopy avail = TestFixtures.insertCopy(c, book, "DS-CP-001", CopyStatus.AVAILABLE);
+            BookCopy borrowed = TestFixtures.insertCopy(c, book, "DS-CP-002", CopyStatus.BORROWED);
 
             DashboardStats s1 = dashboardDao.getStats(c, today);
             assertEquals(1, s1.getTotalBooks());
@@ -258,15 +225,15 @@ class CrossTableSynchronizationTest {
                     "A copy with status=BORROWED does NOT imply an active loan — the dashboard reads loans.return_date, not book_copies.status");
 
             // Insert 2 members (1 ACTIVE, 1 INACTIVE).
-            Member active = insertMember(c, "M-DS-001", "Active", "ds1@test.com");
-            insertMember(c, "M-DS-002", "Inactive", "ds2@test.com", MemberStatus.INACTIVE);
+            Member active = TestFixtures.insertMember(c, "M-DS-001", "Active", "ds1@test.com");
+            TestFixtures.insertMember(c, "M-DS-002", "Inactive", "ds2@test.com", MemberStatus.INACTIVE);
 
             DashboardStats s2 = dashboardDao.getStats(c, today);
             assertEquals(2, s2.getTotalMembers(),
                     "Dashboard totalMembers includes both ACTIVE and INACTIVE members");
 
             // Create a loan against the BORROWED-tagged copy.
-            Loan loan = insertActiveLoan(c, borrowed, active, today.minusDays(20));
+            Loan loan = TestFixtures.insertActiveLoan(c, borrowed, active, today.minusDays(20));
 
             DashboardStats s3 = dashboardDao.getStats(c, today);
             assertEquals(1, s3.getActiveLoans());
@@ -293,17 +260,17 @@ class CrossTableSynchronizationTest {
     @Test
     void memberActiveLoanCountMatchesActualCount() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member member = insertMember(c, "M-AC-001", "Active Count Member", "ac@test.com");
-            Book book = insertBook(c, "978-AC-000-000-001", "AC Book");
-            BookCopy cp1 = insertCopy(c, book, "AC-CP-001", CopyStatus.AVAILABLE);
-            BookCopy cp2 = insertCopy(c, book, "AC-CP-002", CopyStatus.AVAILABLE);
-            BookCopy cp3 = insertCopy(c, book, "AC-CP-003", CopyStatus.AVAILABLE);
+            TestFixtures.prepare(c);
+            Member member = TestFixtures.insertMember(c, "M-AC-001", "Active Count Member", "ac@test.com");
+            Book book = TestFixtures.insertBook(c, "978-AC-000-000-001", "AC Book");
+            BookCopy cp1 = TestFixtures.insertCopy(c, book, "AC-CP-001", CopyStatus.AVAILABLE);
+            BookCopy cp2 = TestFixtures.insertCopy(c, book, "AC-CP-002", CopyStatus.AVAILABLE);
+            BookCopy cp3 = TestFixtures.insertCopy(c, book, "AC-CP-003", CopyStatus.AVAILABLE);
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan l1 = insertActiveLoan(c, cp1, member, today);
-            Loan l2 = insertActiveLoan(c, cp2, member, today);
-            insertActiveLoan(c, cp3, member, today);
+            Loan l1 = TestFixtures.insertActiveLoan(c, cp1, member, today);
+            Loan l2 = TestFixtures.insertActiveLoan(c, cp2, member, today);
+            TestFixtures.insertActiveLoan(c, cp3, member, today);
 
             // 3 active loans via search projection.
             MemberSearchCriteria criteria = new MemberSearchCriteria();
@@ -332,18 +299,18 @@ class CrossTableSynchronizationTest {
     @Test
     void memberActiveLoanCountExcludesReturnedHistory() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Member member = insertMember(c, "M-RH-001", "Returned History Member", "rh@test.com");
-            Book book = insertBook(c, "978-RH-000-000-001", "RH Book");
-            BookCopy copy = insertCopy(c, book, "RH-CP-001", CopyStatus.AVAILABLE);
+            TestFixtures.prepare(c);
+            Member member = TestFixtures.insertMember(c, "M-RH-001", "Returned History Member", "rh@test.com");
+            Book book = TestFixtures.insertBook(c, "978-RH-000-000-001", "RH Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "RH-CP-001", CopyStatus.AVAILABLE);
 
             // Borrow and return twice on the same copy.
             LocalDate d1 = LocalDate.of(2026, 1, 1);
-            Loan l1 = insertActiveLoan(c, copy, member, d1);
+            Loan l1 = TestFixtures.insertActiveLoan(c, copy, member, d1);
             loanDao.markReturned(c, l1.getLoanId(), d1.plusDays(5));
 
             LocalDate d2 = LocalDate.of(2026, 2, 1);
-            Loan l2 = insertActiveLoan(c, copy, member, d2);
+            Loan l2 = TestFixtures.insertActiveLoan(c, copy, member, d2);
             loanDao.markReturned(c, l2.getLoanId(), d2.plusDays(5));
 
             // 2 loans in history, 0 active.
@@ -360,16 +327,16 @@ class CrossTableSynchronizationTest {
     @Test
     void bookAvailableCopiesMatchesActualCount() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-AB-000-000-001", "Available Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-AB-000-000-001", "Available Book");
 
             // 0 copies initially.
             assertEquals(0, bookDao.findById(c, book.getBookId()).orElseThrow().getAvailableCopies());
 
-            BookCopy a1 = insertCopy(c, book, "AB-CP-001", CopyStatus.AVAILABLE);
-            BookCopy a2 = insertCopy(c, book, "AB-CP-002", CopyStatus.AVAILABLE);
-            insertCopy(c, book, "AB-CP-003", CopyStatus.BORROWED);
-            insertCopy(c, book, "AB-CP-004", CopyStatus.MAINTENANCE);
+            BookCopy a1 = TestFixtures.insertCopy(c, book, "AB-CP-001", CopyStatus.AVAILABLE);
+            BookCopy a2 = TestFixtures.insertCopy(c, book, "AB-CP-002", CopyStatus.AVAILABLE);
+            TestFixtures.insertCopy(c, book, "AB-CP-003", CopyStatus.BORROWED);
+            TestFixtures.insertCopy(c, book, "AB-CP-004", CopyStatus.MAINTENANCE);
 
             // 2 AVAILABLE copies.
             Book found = bookDao.findById(c, book.getBookId()).orElseThrow();
@@ -402,13 +369,13 @@ class CrossTableSynchronizationTest {
     @Test
     void existsByBookIdTrueAfterAllLoansReturned() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-EB-000-000-001", "Exists Book");
-            BookCopy copy = insertCopy(c, book, "EB-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-EB-001", "EB Member", "eb@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-EB-000-000-001", "Exists Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "EB-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-EB-001", "EB Member", "eb@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 9, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // Active loan — existsByBookId is true.
             assertTrue(loanDao.existsByBookId(c, book.getBookId()));
@@ -423,9 +390,9 @@ class CrossTableSynchronizationTest {
     @Test
     void existsByBookIdFalseForBookWithNoLoans() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-NL-000-000-001", "No Loans Book");
-            insertCopy(c, book, "NL-CP-001", CopyStatus.AVAILABLE);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-NL-000-000-001", "No Loans Book");
+            TestFixtures.insertCopy(c, book, "NL-CP-001", CopyStatus.AVAILABLE);
 
             assertFalse(loanDao.existsByBookId(c, book.getBookId()));
         }
@@ -438,8 +405,8 @@ class CrossTableSynchronizationTest {
     @Test
     void replaceForBookRemovesOldLinksAndInsertsNewSet() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RP-000-000-001", "Replace Authors Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RP-000-000-001", "Replace Authors Book");
 
             // Initial: 2 authors (IDs 1 and 2 from seedReferenceData).
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2));
@@ -463,9 +430,9 @@ class CrossTableSynchronizationTest {
     @Test
     void replaceForBookIsOrderIndependent() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book1 = insertBook(c, "978-O1-000-000-001", "Order Book 1");
-            Book book2 = insertBook(c, "978-O2-000-000-002", "Order Book 2");
+            TestFixtures.prepare(c);
+            Book book1 = TestFixtures.insertBook(c, "978-O1-000-000-001", "Order Book 1");
+            Book book2 = TestFixtures.insertBook(c, "978-O2-000-000-002", "Order Book 2");
 
             // Same author set, different order — result must be the same.
             bookAuthorDao.replaceForBook(c, book1.getBookId(), List.of(1, 2, 3));
@@ -489,8 +456,8 @@ class CrossTableSynchronizationTest {
     @Test
     void cascadeDeleteBookRemovesBookAuthorsLinks() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-CD-000-000-001", "Cascade Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-CD-000-000-001", "Cascade Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2, 3));
             assertEquals(3, bookAuthorDao.findByBookId(c, book.getBookId()).size());
 
@@ -508,8 +475,8 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeletePublisherWithBooksFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, "978-RP-000-000-001", "Referenced Book");
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, "978-RP-000-000-001", "Referenced Book");
             // Publisher 1 (Literature Publisher) is referenced by the book.
             // Raw JDBC bypasses the DAO wrapper, so the driver's SQLException is expected here.
             SQLException error = assertThrows(SQLException.class, () -> {
@@ -524,8 +491,8 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeleteCategoryWithBooksFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            insertBook(c, "978-RC-000-000-001", "Referenced Cat Book");
+            TestFixtures.prepare(c);
+            TestFixtures.insertBook(c, "978-RC-000-000-001", "Referenced Cat Book");
             SQLException error = assertThrows(SQLException.class, () -> {
                 try (Statement st = c.createStatement()) {
                     st.execute("DELETE FROM categories WHERE category_id = 1");
@@ -538,9 +505,9 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeleteBookWithCopiesFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RB-000-000-001", "Book With Copies");
-            insertCopy(c, book, "RB-CP-001", CopyStatus.AVAILABLE);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RB-000-000-001", "Book With Copies");
+            TestFixtures.insertCopy(c, book, "RB-CP-001", CopyStatus.AVAILABLE);
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> bookDao.delete(c, book.getBookId()));
@@ -553,13 +520,13 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeleteBookCopyWithLoanHistoryFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RL-000-000-001", "Copy With Loan Book");
-            BookCopy copy = insertCopy(c, book, "RL-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-RL-001", "Member RL", "rl@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RL-000-000-001", "Copy With Loan Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "RL-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-RL-001", "Member RL", "rl@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 7, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
             // Deleting the copy directly must fail because loan references it.
             // Raw JDBC bypasses the DAO wrapper, so the driver's SQLException is expected here.
@@ -586,13 +553,13 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeleteMemberWithLoanHistoryFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RM-000-000-001", "Member Restrict Book");
-            BookCopy copy = insertCopy(c, book, "RM-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-RM-001", "Member RM", "rm@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RM-000-000-001", "Member Restrict Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "RM-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-RM-001", "Member RM", "rm@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 5, 1);
-            Loan loan = insertActiveLoan(c, copy, member, loanDate);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(4));
 
             // Member still has loan history → RESTRICT prevents deletion.
@@ -608,8 +575,8 @@ class CrossTableSynchronizationTest {
     @Test
     void restrictDeleteAuthorWithBookLinksFails() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-RA-000-000-001", "Author Restrict Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-RA-000-000-001", "Author Restrict Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1));
 
             SQLException error = assertThrows(SQLException.class, () -> {
@@ -627,8 +594,8 @@ class CrossTableSynchronizationTest {
         // When a book is deleted (and it has no copies to trip RESTRICT), the book_authors
         // rows for that book are removed. The author rows themselves are preserved.
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-CA-000-000-001", "Cascade No Copy Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-CA-000-000-001", "Cascade No Copy Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2));
 
             long authorsBefore = rawCount(c, "SELECT COUNT(*) FROM authors");
@@ -655,16 +622,16 @@ class CrossTableSynchronizationTest {
     @Test
     void noOrphanRowsAfterMixedOperations() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-OR-000-000-001", "Orphan Test Book");
-            BookCopy copy = insertCopy(c, book, "OR-CP-001", CopyStatus.AVAILABLE);
-            Member member = insertMember(c, "M-OR-001", "Orphan Member", "or@test.com");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-OR-000-000-001", "Orphan Test Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "OR-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-OR-001", "Orphan Member", "or@test.com");
 
             LocalDate today = LocalDate.of(2026, 10, 25);
-            Loan loan = insertActiveLoan(c, copy, member, today.minusDays(2));
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, today.minusDays(2));
             loanDao.markReturned(c, loan.getLoanId(), today);
             // Re-borrow the same copy.
-            insertActiveLoan(c, copy, member, today);
+            TestFixtures.insertActiveLoan(c, copy, member, today);
 
             // Run the same orphan-detection query used in manual-relation-test.sql.
             String orphanSql =

@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="ui" tagdir="/WEB-INF/tags" %>
 
 <c:import url="/WEB-INF/views/common/head.jsp">
     <c:param name="pageTitle" value="Books" />
@@ -89,34 +90,6 @@
     </table>
 </div>
 
-<c:if test="${bookPage.totalPages gt 1}">
-    <div class="pagination mt-2">
-        <c:if test="${not bookPage.first}">
-            <c:url var="previousUrl" value="/books">
-                <c:param name="page" value="${bookPage.page - 1}" />
-                <c:param name="size" value="${bookPage.size}" />
-                <c:if test="${not empty criteria.keyword}"><c:param name="keyword" value="${criteria.keyword}" /></c:if>
-                <c:if test="${criteria.publisherId != null}"><c:param name="publisherId" value="${criteria.publisherId}" /></c:if>
-                <c:if test="${criteria.categoryId != null}"><c:param name="categoryId" value="${criteria.categoryId}" /></c:if>
-                <c:if test="${not empty criteria.authorName}"><c:param name="authorName" value="${criteria.authorName}" /></c:if>
-                <c:if test="${criteria.availableOnly}"><c:param name="availableOnly" value="true" /></c:if>
-            </c:url>
-            <a href="${previousUrl}" class="btn btn-sm btn-secondary">Previous</a>
-        </c:if>
-        <span class="current">Page <c:out value="${bookPage.page + 1}" /> / <c:out value="${bookPage.totalPages}" /></span>
-        <c:if test="${not bookPage.last}">
-            <c:url var="nextUrl" value="/books">
-                <c:param name="page" value="${bookPage.page + 1}" />
-                <c:param name="size" value="${bookPage.size}" />
-                <c:if test="${not empty criteria.keyword}"><c:param name="keyword" value="${criteria.keyword}" /></c:if>
-                <c:if test="${criteria.publisherId != null}"><c:param name="publisherId" value="${criteria.publisherId}" /></c:if>
-                <c:if test="${criteria.categoryId != null}"><c:param name="categoryId" value="${criteria.categoryId}" /></c:if>
-                <c:if test="${not empty criteria.authorName}"><c:param name="authorName" value="${criteria.authorName}" /></c:if>
-                <c:if test="${criteria.availableOnly}"><c:param name="availableOnly" value="true" /></c:if>
-            </c:url>
-            <a href="${nextUrl}" class="btn btn-sm btn-secondary">Next</a>
-        </c:if>
-    </div>
-</c:if>
+<ui:pagination pageData="${bookPage}" baseUrl="/books" />
 
 <c:import url="/WEB-INF/views/common/foot.jsp" />

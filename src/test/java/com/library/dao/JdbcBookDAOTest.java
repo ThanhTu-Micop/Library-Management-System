@@ -4,6 +4,7 @@ import com.library.dao.jdbc.JdbcBookAuthorDAO;
 import com.library.dao.jdbc.JdbcBookCopyDAO;
 import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -27,15 +28,10 @@ class JdbcBookDAOTest {
     private final BookCopyDAO copyDao = new JdbcBookCopyDAO();
     private final BookAuthorDAO bookAuthorDao = new JdbcBookAuthorDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
     @Test
     void insertAndFindById() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "978-000-000-001", "Clean Code", 1, 1, 2008);
             int affected = dao.insert(c, book);
             assertEquals(1, affected);
@@ -55,7 +51,7 @@ class JdbcBookDAOTest {
     @Test
     void findByIdNotFound() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             assertFalse(dao.findById(c, 99999).isPresent());
         }
     }
@@ -63,7 +59,7 @@ class JdbcBookDAOTest {
     @Test
     void updateBook() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "978-000-000-002", "Old Title", 1, 1, 2000);
             dao.insert(c, book);
 
@@ -85,7 +81,7 @@ class JdbcBookDAOTest {
     @Test
     void deleteBook() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "978-000-000-003", "To Delete", 1, 1, 1999);
             dao.insert(c, book);
 
@@ -97,7 +93,7 @@ class JdbcBookDAOTest {
     @Test
     void isbnMustBeUnique() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Book(null, "978-DUP-000-001", "Book One", 1, 1, 2010));
 
             DataAccessException error = assertThrows(DataAccessException.class,
@@ -111,7 +107,7 @@ class JdbcBookDAOTest {
     @Test
     void isbnLengthBoundaries() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book thirteen = new Book(null, "1234567890123", "Thirteen", 1, 1, 2010);
             Book twenty = new Book(null, "12345678901234567890", "Twenty", 1, 1, 2010);
             assertEquals(1, dao.insert(c, thirteen));
@@ -126,7 +122,7 @@ class JdbcBookDAOTest {
     @Test
     void isbnIsTrimmed() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "  978-TRIM-000-001  ", "Trimmed", 1, 1, 2020);
             dao.insert(c, book);
 
@@ -139,7 +135,7 @@ class JdbcBookDAOTest {
     @Test
     void nullPublicationYearRemainsNull() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "978-YEAR-000-001", "Unknown Year", 1, 1, null);
             dao.insert(c, book);
 
@@ -152,7 +148,7 @@ class JdbcBookDAOTest {
     @Test
     void keywordFilterRejectsNonMatchingBook() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Book(null, "978-KW-000-001", "Clean Code", 1, 1, 2008));
             dao.insert(c, new Book(null, "978-KW-000-002", "Foundation", 2, 2, 1951));
 
@@ -170,7 +166,7 @@ class JdbcBookDAOTest {
     @Test
     void publisherAndCategoryFilters() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             dao.insert(c, new Book(null, "978-FLT-000-001", "Publisher One", 1, 1, 2000));
             dao.insert(c, new Book(null, "978-FLT-000-002", "Publisher Two", 2, 2, 2001));
 
@@ -189,7 +185,7 @@ class JdbcBookDAOTest {
     @Test
     void authorNameFilter() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book book = new Book(null, "978-AUT-000-001", "Clean Code", 1, 1, 2008);
             dao.insert(c, book);
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(3));
@@ -206,7 +202,7 @@ class JdbcBookDAOTest {
     @Test
     void availableOnlyFilter() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             Book available = new Book(null, "978-AVL-000-001", "Available Book", 1, 1, 2000);
             Book borrowed = new Book(null, "978-AVL-000-002", "Borrowed Book", 1, 1, 2001);
             dao.insert(c, available);
@@ -226,7 +222,7 @@ class JdbcBookDAOTest {
     @Test
     void paginationAppliesFiltersToCountAndData() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
+            TestFixtures.prepare(c);
             for (int i = 1; i <= 5; i++) {
                 dao.insert(c, new Book(null, "978-PAGE-000-00" + i,
                         "Filter Book " + i, 1, 1, 2010 + i));

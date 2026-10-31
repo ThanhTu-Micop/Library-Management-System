@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<%@ taglib prefix="ui" tagdir="/WEB-INF/tags" %>
 
 <c:import url="/WEB-INF/views/common/head.jsp">
     <c:param name="pageTitle" value="Members" />
@@ -66,28 +67,6 @@
     </table>
 </div>
 
-<c:if test="${memberPage.totalPages gt 1}">
-    <div class="pagination mt-2">
-        <c:if test="${not memberPage.first}">
-            <c:url var="previousUrl" value="/members">
-                <c:param name="page" value="${memberPage.page - 1}" />
-                <c:param name="size" value="${memberPage.size}" />
-                <c:if test="${not empty criteria.keyword}"><c:param name="keyword" value="${criteria.keyword}" /></c:if>
-                <c:if test="${criteria.status != null}"><c:param name="status" value="${criteria.status}" /></c:if>
-            </c:url>
-            <a href="${previousUrl}" class="btn btn-sm btn-secondary">Previous</a>
-        </c:if>
-        <span class="current">Page <c:out value="${memberPage.page + 1}" /> / <c:out value="${memberPage.totalPages}" /></span>
-        <c:if test="${not memberPage.last}">
-            <c:url var="nextUrl" value="/members">
-                <c:param name="page" value="${memberPage.page + 1}" />
-                <c:param name="size" value="${memberPage.size}" />
-                <c:if test="${not empty criteria.keyword}"><c:param name="keyword" value="${criteria.keyword}" /></c:if>
-                <c:if test="${criteria.status != null}"><c:param name="status" value="${criteria.status}" /></c:if>
-            </c:url>
-            <a href="${nextUrl}" class="btn btn-sm btn-secondary">Next</a>
-        </c:if>
-    </div>
-</c:if>
+<ui:pagination pageData="${memberPage}" baseUrl="/members" />
 
 <c:import url="/WEB-INF/views/common/foot.jsp" />

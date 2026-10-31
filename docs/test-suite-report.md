@@ -10,7 +10,7 @@
 
 ## 1. Tóm tắt
 
-Bốn class test mở rộng được thêm vào `src/test/java/com/library/dao/`, bổ sung **78 test method**; cùng với **7 test tìm kiếm tiếng Việt** trong `DiacriticSearchTest`, trên nền **39 test method** hiện có, tổng cộng là **124 test method** trên **12 class test** (13 file source, gồm cả `TestDatabase`).
+Bốn class test mở rộng được thêm vào `src/test/java/com/library/dao/`, bổ sung **78 test method**; cùng với **7 test tìm kiếm tiếng Việt** trong `DiacriticSearchTest`, trên nền **39 test method** hiện có, tổng cộng là **124 test method** trên **12 class test** (14 file source, gồm cả `TestDatabase` và `TestFixtures`).
 
 | # | File | Test methods | Nhóm trọng tâm |
 |---|------|--------------|----------------|
@@ -23,6 +23,8 @@ Bốn class test mở rộng được thêm vào `src/test/java/com/library/dao/
 Ngoài bộ test mở rộng ở trên, PR hợp nhất còn thêm `DiacriticSearchTest` với **7 test** kiểm tra tìm kiếm có dấu/không dấu cho sách, tác giả, thành viên và việc escape ký tự LIKE.
 
 Tất cả các file test đã được compile sạch với `javac --release 17 -encoding UTF-8` (JDK 17) cùng classpath gồm `postgresql-42.7.14.jar` và `junit-platform-console-standalone-1.14.4.jar`, sau đó chạy thực tế trên PostgreSQL 16.15 với database `library_test`: **124/124 test PASS**, 0 failed, exit code 0.
+
+> **Cập nhật refactor 2026-10-30 (chạy lại 2026-10-31):** các fixture lặp lại (`prepare`, `insertBook`, `insertCopy`, `insertMember`, `insertActiveLoan`) đã được gom vào `src/test/java/com/library/dao/support/TestFixtures.java`. Không thêm/bớt test method; chạy lại toàn bộ suite vẫn **124/124 PASS**. Tổng số file test hiện tại là **14** (12 class test + `TestDatabase` + `TestFixtures`).
 
 ---
 
@@ -235,6 +237,8 @@ Trên môi trường PostgreSQL 16.15 + JDK 17 + `library_test` đã khởi tạ
 | `DiacriticSearchTest` *(mới)* | 7 | 7 PASS |
 | **Tổng** | **124** | **124 PASS** |
 
+Lần chạy lại ngày **2026-10-31** sau refactor (dùng `TestFixtures`) cũng cho kết quả **124/124 PASS**, 0 failed; số test method không đổi.
+
 **Lưu ý `TransactionIsolationTest`:**
 - Test `forUpdateLockBlocksConcurrentUpdateUntilCommitOrLockTimeout` phụ thuộc `lock_timeout = '1s'`. Nếu hệ thống chậm, có thể tăng lên `'3s'` trong file test.
 - Sau khi `55P03` xảy ra, test gọi `tx2.rollback()` trước khi tiếp tục; nếu không, transaction đã abort sẽ trả `25P02` cho statement kế tiếp.
@@ -256,6 +260,16 @@ Trên môi trường PostgreSQL 16.15 + JDK 17 + `library_test` đã khởi tạ
 | `scripts/run-tests.ps1` | Runner PowerShell (download JAR, compile, run) |
 | `scripts/run-tests.sh` | Runner bash (download JAR, compile, run) |
 
+### Bổ sung trong refactor 2026-10-30
+
+| Path | Mô tả |
+|---|---|
+| `src/test/java/com/library/dao/support/TestFixtures.java` | Fixture dùng chung cho toàn bộ test DAO; thay các helper `prepare`/`insert*` lặp lại trong từng class |
+| `src/main/java/com/library/dao/jdbc/JdbcSupport.java` | Helper JDBC dùng chung: bind tham số, escape LIKE, query/update/insert, phân trang |
+| `src/main/java/com/library/dao/jdbc/AbstractNamedEntityDAO.java` | Base class generic cho Author/Category/Publisher |
+| `src/main/java/com/library/model/criteria/PageCriteria.java` | State phân trang dùng chung cho ba criteria |
+| `src/main/webapp/WEB-INF/tags/pagination.tag` | Tag Previous/Next dùng chung cho bốn màn hình danh sách |
+
 ### File hiện có đã sửa trong quá trình hợp nhất
 
 - 4 file test merge đã được sửa 8 lỗi phía test (không đổi schema/DAO để ép test pass):
@@ -269,10 +283,10 @@ Trên môi trường PostgreSQL 16.15 + JDK 17 + `library_test` đã khởi tạ
 
 ```
 $ javac --release 17 -encoding UTF-8 -d build/main -cp lib/postgresql-42.7.14.jar src/main/java/**/*.java
-# 37/37 main files compiled, 0 errors
+# 40/40 main files compiled, 0 errors
 
 $ javac --release 17 -encoding UTF-8 -d build/test -cp build/main:lib/postgresql-42.7.14.jar:lib/junit-platform-console-standalone-1.14.4.jar src/test/java/**/*.java
-# 13/13 test files compiled (8 existing + 4 merged + 1 diacritic), 0 errors
+# 14/14 test files compiled (12 test classes + TestDatabase + TestFixtures), 0 errors
 ```
 
 ---

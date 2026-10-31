@@ -9,11 +9,7 @@ import java.time.LocalDate;
  * <p>The DAO applies every non-null criterion. {@code today} is supplied by the caller so
  * date-sensitive queries stay deterministic and testable; it defaults to the current date.
  */
-public class LoanSearchCriteria {
-
-    private static final int DEFAULT_PAGE = 0;
-    private static final int DEFAULT_SIZE = 10;
-    private static final int MAX_SIZE = 100;
+public class LoanSearchCriteria extends PageCriteria {
 
     private Integer memberId;
     private Integer copyId;
@@ -22,8 +18,6 @@ public class LoanSearchCriteria {
     private LocalDate fromDate;
     private LocalDate toDate;
     private Boolean overdueOnly; // true: only ACTIVE loans whose due date is before today
-    private Integer page = DEFAULT_PAGE;
-    private Integer size = DEFAULT_SIZE;
     private LocalDate today = LocalDate.now();
 
     public LoanSearchCriteria() {
@@ -85,22 +79,6 @@ public class LoanSearchCriteria {
         this.overdueOnly = overdueOnly;
     }
 
-    public Integer getPage() {
-        return page != null ? Math.max(0, page) : DEFAULT_PAGE;
-    }
-
-    public void setPage(Integer page) {
-        this.page = page != null ? Math.max(0, page) : DEFAULT_PAGE;
-    }
-
-    public Integer getSize() {
-        return size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
-    }
-
-    public void setSize(Integer size) {
-        this.size = size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
-    }
-
     public LocalDate getToday() {
         return today;
     }
@@ -113,6 +91,6 @@ public class LoanSearchCriteria {
     public String toString() {
         return "LoanSearchCriteria{memberId=" + memberId + ", copyId=" + copyId + ", bookId=" + bookId + ", status=" + status
                 + ", fromDate=" + fromDate + ", toDate=" + toDate + ", overdueOnly=" + overdueOnly
-                + ", page=" + page + ", size=" + size + ", today=" + today + "}";
+                + ", page=" + getPage() + ", size=" + getSize() + ", today=" + today + "}";
     }
 }

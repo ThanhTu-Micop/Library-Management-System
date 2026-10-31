@@ -1,8 +1,8 @@
 package com.library.dao;
 
 import com.library.dao.jdbc.JdbcBookAuthorDAO;
-import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.model.Author;
 import com.library.model.Book;
 import org.junit.jupiter.api.Test;
@@ -18,21 +18,13 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class JdbcBookAuthorDAOTest {
 
-    private final BookDAO bookDao = new JdbcBookDAO();
     private final BookAuthorDAO bookAuthorDao = new JdbcBookAuthorDAO();
-
-    private Book prepareBook(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-        Book book = new Book(null, "978-BA-000-001", "Author Link Book", 1, 1, 2020);
-        bookDao.insert(c, book);
-        return book;
-    }
 
     @Test
     void replaceAndFindAuthors() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            Book book = prepareBook(c);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-BA-000-001", "Author Link Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2));
 
             List<Author> authors = bookAuthorDao.findByBookId(c, book.getBookId());
@@ -51,7 +43,8 @@ class JdbcBookAuthorDAOTest {
     @Test
     void duplicateAuthorIdsAreDeduplicated() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            Book book = prepareBook(c);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-BA-000-001", "Author Link Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), Arrays.asList(1, 1, 1));
 
             List<Author> authors = bookAuthorDao.findByBookId(c, book.getBookId());
@@ -63,7 +56,8 @@ class JdbcBookAuthorDAOTest {
     @Test
     void replaceWithEmptyListRemovesEveryLink() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            Book book = prepareBook(c);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-BA-000-001", "Author Link Book");
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2));
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of());
             assertTrue(bookAuthorDao.findByBookId(c, book.getBookId()).isEmpty());
@@ -73,7 +67,8 @@ class JdbcBookAuthorDAOTest {
     @Test
     void deleteByBookIdToleratesZeroRows() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            Book book = prepareBook(c);
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-BA-000-001", "Author Link Book");
             assertDoesNotThrow(() -> bookAuthorDao.deleteByBookId(c, book.getBookId()));
             assertTrue(bookAuthorDao.findByBookId(c, book.getBookId()).isEmpty());
         }

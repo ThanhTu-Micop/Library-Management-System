@@ -1,10 +1,10 @@
 package com.library.dao;
 
 import com.library.dao.jdbc.JdbcBookCopyDAO;
-import com.library.dao.jdbc.JdbcBookDAO;
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.jdbc.JdbcMemberDAO;
 import com.library.dao.support.TestDatabase;
+import com.library.dao.support.TestFixtures;
 import com.library.exception.DataAccessException;
 import com.library.model.Book;
 import com.library.model.BookCopy;
@@ -27,27 +27,15 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class JdbcBookCopyDAOTest {
 
-    private final BookDAO bookDao = new JdbcBookDAO();
     private final BookCopyDAO copyDao = new JdbcBookCopyDAO();
     private final MemberDAO memberDao = new JdbcMemberDAO();
     private final LoanDAO loanDao = new JdbcLoanDAO();
 
-    private void prepare(Connection c) throws Exception {
-        TestDatabase.resetAll(c);
-        TestDatabase.seedReferenceData(c);
-    }
-
-    private Book insertBook(Connection c, String isbn, String title) {
-        Book book = new Book(null, isbn, title, 1, 1, 2020);
-        bookDao.insert(c, book);
-        return book;
-    }
-
     @Test
     void insertAndFindByBookId() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-001", "Copy Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-001", "Copy Book");
             BookCopy copy = new BookCopy(null, book.getBookId(), "COPY-001", CopyStatus.AVAILABLE);
             assertEquals(1, copyDao.insert(c, copy));
             assertNotNull(copy.getCopyId());
@@ -63,8 +51,8 @@ class JdbcBookCopyDAOTest {
     @Test
     void findByIdForUpdateAndUpdateStatus() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-002", "Status Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-002", "Status Book");
             BookCopy copy = new BookCopy(null, book.getBookId(), "COPY-002", CopyStatus.AVAILABLE);
             copyDao.insert(c, copy);
 
@@ -79,8 +67,8 @@ class JdbcBookCopyDAOTest {
     @Test
     void findAvailableWithBookReturnsOnlyAvailableCopies() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-003", "Available Copy Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-003", "Available Copy Book");
             copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-003-A", CopyStatus.AVAILABLE));
             copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-003-B", CopyStatus.BORROWED));
             copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-003-C", CopyStatus.MAINTENANCE));
@@ -95,8 +83,8 @@ class JdbcBookCopyDAOTest {
     @Test
     void deleteByBookIdWithZeroCopiesSucceeds() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-004", "No Copies Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-004", "No Copies Book");
             assertDoesNotThrow(() -> copyDao.deleteByBookId(c, book.getBookId()));
             assertTrue(copyDao.findByBookId(c, book.getBookId()).isEmpty());
         }
@@ -105,8 +93,8 @@ class JdbcBookCopyDAOTest {
     @Test
     void deleteByBookIdWithMultipleCopies() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-005", "Many Copies Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-005", "Many Copies Book");
             copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-005-A", CopyStatus.AVAILABLE));
             copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-005-B", CopyStatus.MAINTENANCE));
 
@@ -118,8 +106,8 @@ class JdbcBookCopyDAOTest {
     @Test
     void deletingCopiesWithLoanHistoryIsRejected() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
-            prepare(c);
-            Book book = insertBook(c, "978-COPY-000-006", "Loan Protected Book");
+            TestFixtures.prepare(c);
+            Book book = TestFixtures.insertBook(c, "978-COPY-000-006", "Loan Protected Book");
             BookCopy copy = new BookCopy(null, book.getBookId(), "COPY-006-A", CopyStatus.BORROWED);
             copyDao.insert(c, copy);
             Member member = new Member(null, "M-COPY-001", "Copy Member", "copy@test.com", MemberStatus.ACTIVE);

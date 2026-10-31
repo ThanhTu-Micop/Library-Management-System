@@ -5,19 +5,13 @@ package com.library.model.criteria;
  *
  * <p>The DAO applies every non-null criterion. {@code page} is zero-based.
  */
-public class BookSearchCriteria {
+public class BookSearchCriteria extends PageCriteria {
 
     private String keyword; // matches title or ISBN
     private Integer publisherId;
     private Integer categoryId;
     private String authorName;
     private Boolean availableOnly; // true: only books with at least one AVAILABLE copy
-    private static final int DEFAULT_PAGE = 0;
-    private static final int DEFAULT_SIZE = 10;
-    private static final int MAX_SIZE = 100;
-
-    private Integer page = DEFAULT_PAGE;
-    private Integer size = DEFAULT_SIZE;
 
     public BookSearchCriteria() {
     }
@@ -62,25 +56,10 @@ public class BookSearchCriteria {
         this.availableOnly = availableOnly;
     }
 
-    public Integer getPage() {
-        return page != null ? Math.max(0, page) : DEFAULT_PAGE;
-    }
-
-    public void setPage(Integer page) {
-        this.page = page != null ? Math.max(0, page) : DEFAULT_PAGE;
-    }
-
-    public Integer getSize() {
-        return size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
-    }
-
-    public void setSize(Integer size) {
-        this.size = size != null ? Math.min(Math.max(1, size), MAX_SIZE) : DEFAULT_SIZE;
-    }
-
     @Override
     public String toString() {
         return "BookSearchCriteria{keyword='" + keyword + "', publisherId=" + publisherId + ", categoryId=" + categoryId
-                + ", authorName='" + authorName + "', availableOnly=" + availableOnly + ", page=" + page + ", size=" + size + "}";
+                + ", authorName='" + authorName + "', availableOnly=" + availableOnly
+                + ", page=" + getPage() + ", size=" + getSize() + "}";
     }
 }
