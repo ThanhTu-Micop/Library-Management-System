@@ -13,6 +13,7 @@ import com.library.model.Member;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -119,7 +120,7 @@ class JdbcBookCopyDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> copyDao.deleteByBookId(c, book.getBookId()));
-            assertEquals("23503", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSqlState());
         }
     }
 }

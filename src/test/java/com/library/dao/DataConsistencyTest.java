@@ -1,4 +1,4 @@
-package com.library.dao;
+﻿package com.library.dao;
 
 import com.library.dao.jdbc.JdbcAuthorDAO;
 import com.library.dao.jdbc.JdbcBookDAO;
@@ -18,6 +18,7 @@ import com.library.model.Member;
 import com.library.model.Publisher;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -74,7 +75,7 @@ class DataConsistencyTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> TestFixtures.insertMember(c, "M-2", "Member Two", "USER@example.COM"));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -89,7 +90,7 @@ class DataConsistencyTest {
             second.setEmail("FIRST@TEST.COM");
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> memberDao.update(c, second));
-            assertEquals("23505", error.getSqlState(),
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState(),
                     "UPDATE must hit the same partial unique index ux_members_email_lower as INSERT");
         }
     }
@@ -122,7 +123,7 @@ class DataConsistencyTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> TestFixtures.insertMember(c, "M-DUP", "Second", "second@test.com"));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -136,7 +137,7 @@ class DataConsistencyTest {
             b.setMemberCode("M-A");
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> memberDao.update(c, b));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -162,7 +163,7 @@ class DataConsistencyTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> TestFixtures.insertBook(c, "978-DUP-000-000-001", "Second"));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -176,7 +177,7 @@ class DataConsistencyTest {
             two.setIsbn("978-U1-000-000-001");
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> bookDao.update(c, two));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -221,9 +222,9 @@ class DataConsistencyTest {
             // 12 chars rejected by CHECK constraint books_isbn_length.
             DataAccessException tooShort = assertThrows(DataAccessException.class,
                     () -> bookDao.insert(c, new Book(null, "123456789012", "Twelve", 1, 1, 2020)));
-            assertEquals("23514", tooShort.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, tooShort.getSqlState());
 
-            // 21 chars rejected by varchar(20) — string_data_right_truncation.
+            // 21 chars rejected by varchar(20) â€” string_data_right_truncation.
             DataAccessException tooLong = assertThrows(DataAccessException.class,
                     () -> bookDao.insert(c, new Book(null, "123456789012345678901", "TwentyOne", 1, 1, 2020)));
             assertEquals("22001", tooLong.getSqlState());
@@ -244,7 +245,7 @@ class DataConsistencyTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> categoryDao.insert(c, new Category(null, "DRAMA")));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -265,7 +266,7 @@ class DataConsistencyTest {
                     st.execute("UPDATE categories SET name = 'POETRY' WHERE category_id = " + other.getCategoryId());
                 }
             });
-            assertEquals("23505", ex.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, ex.getSQLState());
         }
     }
 
@@ -298,7 +299,7 @@ class DataConsistencyTest {
 
             Member found = memberDao.findById(c, m.getMemberId()).orElseThrow();
             assertNull(found.getEmail(),
-                    "JdbcMemberDAO.update must normalize blank email to NULL — same as insert");
+                    "JdbcMemberDAO.update must normalize blank email to NULL â€” same as insert");
         }
     }
 
@@ -332,11 +333,11 @@ class DataConsistencyTest {
             // 999 rejected.
             DataAccessException tooLow = assertThrows(DataAccessException.class,
                     () -> bookDao.insert(c, new Book(null, "978-Y3-000-000-003", "Year 999", 1, 1, 999)));
-            assertEquals("23514", tooLow.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, tooLow.getSqlState());
             // 2101 rejected.
             DataAccessException tooHigh = assertThrows(DataAccessException.class,
                     () -> bookDao.insert(c, new Book(null, "978-Y4-000-000-004", "Year 2101", 1, 1, 2101)));
-            assertEquals("23514", tooHigh.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, tooHigh.getSqlState());
         }
     }
 
@@ -360,7 +361,7 @@ class DataConsistencyTest {
                     ps.executeUpdate();
                 }
             });
-            assertEquals("23514", ex.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState());
         }
     }
 
@@ -384,7 +385,7 @@ class DataConsistencyTest {
                     ps.executeUpdate();
                 }
             });
-            assertEquals("23514", ex.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState());
         }
     }
 
@@ -403,7 +404,7 @@ class DataConsistencyTest {
                     ps.executeUpdate();
                 }
             });
-            assertEquals("23514", ex.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState());
         }
     }
 
@@ -430,10 +431,10 @@ class DataConsistencyTest {
                     st.execute("UPDATE loans SET status = 'RETURNED' WHERE loan_id = " + loan.getLoanId());
                 }
             });
-            assertEquals("23514", ex.getSQLState(),
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState(),
                     "loans_status_return_date_consistency CHECK must reject RETURNED without return_date on UPDATE");
 
-            // Loan is still ACTIVE — UPDATE was atomic.
+            // Loan is still ACTIVE â€” UPDATE was atomic.
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
             assertEquals(LoanStatus.ACTIVE, found.getStatus());
             assertNull(found.getReturnDate());
@@ -459,7 +460,7 @@ class DataConsistencyTest {
                     st.execute("UPDATE loans SET status = 'ACTIVE' WHERE loan_id = " + loan.getLoanId());
                 }
             });
-            assertEquals("23514", ex.getSQLState(),
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState(),
                     "CHECK must reject ACTIVE status when return_date is non-NULL on UPDATE");
         }
     }
@@ -483,7 +484,7 @@ class DataConsistencyTest {
                     st.execute("UPDATE loans SET due_date = loan_date + 13 WHERE loan_id = " + loan.getLoanId());
                 }
             });
-            assertEquals("23514", ex.getSQLState(),
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState(),
                     "loans_due_date_14_days CHECK must reject any due_date != loan_date + 14 on UPDATE");
         }
     }
@@ -507,7 +508,7 @@ class DataConsistencyTest {
                             + "WHERE loan_id = " + loan.getLoanId());
                 }
             });
-            assertEquals("23514", ex.getSQLState(),
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, ex.getSQLState(),
                     "loans_return_date_check must reject return_date < loan_date on UPDATE");
         }
     }
@@ -540,3 +541,4 @@ class DataConsistencyTest {
         }
     }
 }
+

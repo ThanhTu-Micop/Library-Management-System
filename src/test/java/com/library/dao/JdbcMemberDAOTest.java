@@ -16,6 +16,7 @@ import com.library.model.criteria.MemberSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -61,7 +62,7 @@ class JdbcMemberDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> dao.insert(c, new Member(null, "M-UNQ-001", "User Two", "u2@test.com", MemberStatus.ACTIVE)));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
@@ -76,7 +77,7 @@ class JdbcMemberDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> dao.insert(c, new Member(null, "M-EML-002", "User Three", "two@TEST.com", MemberStatus.ACTIVE)));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 

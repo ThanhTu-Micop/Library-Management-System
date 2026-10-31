@@ -1,4 +1,4 @@
-package com.library.dao;
+﻿package com.library.dao;
 
 import com.library.dao.jdbc.JdbcBookAuthorDAO;
 import com.library.dao.jdbc.JdbcBookCopyDAO;
@@ -20,6 +20,7 @@ import com.library.model.criteria.MemberSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -56,10 +57,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  *
  * <p>This class also documents the <strong>E01 synchronization gap</strong> noted in
- * README §6: {@code JdbcLoanDAO} does NOT automatically update {@code book_copies.status}
+ * README Â§6: {@code JdbcLoanDAO} does NOT automatically update {@code book_copies.status}
  * when a loan is created or returned. The schema does not enforce it either. The two
  * related tests below assert the <em>current</em> (gap) behavior so that any future fix
- * — whether a trigger, an explicit DAO call, or a service-layer orchestration — will
+ * â€” whether a trigger, an explicit DAO call, or a service-layer orchestration â€” will
  * surface as a failing test that needs updating rather than a silent change.
  */
 class CrossTableSynchronizationTest {
@@ -95,7 +96,7 @@ class CrossTableSynchronizationTest {
 
     @Test
     void bookCopyStatusIsNotAutomaticallySyncedOnLoanInsert() throws Exception {
-        // E01 gap (README §6): The DAO layer does NOT automatically flip book_copies.status
+        // E01 gap (README Â§6): The DAO layer does NOT automatically flip book_copies.status
         // to BORROWED when a loan is created. The schema has no trigger to do it either.
         // The Service layer (Person 2, not yet implemented) is expected to call
         // copyDao.updateStatus(BORROWED) explicitly alongside loanDao.insert.
@@ -112,7 +113,7 @@ class CrossTableSynchronizationTest {
             // Reload the copy directly from the table to bypass any DAO caching.
             BookCopy reloaded = copyDao.findByIdForUpdate(c, copy.getCopyId()).orElseThrow();
             assertEquals(CopyStatus.AVAILABLE, reloaded.getStatus(),
-                    "E01 gap: copy.status stays AVAILABLE after loan is inserted — DAO does not auto-sync");
+                    "E01 gap: copy.status stays AVAILABLE after loan is inserted â€” DAO does not auto-sync");
         }
     }
 
@@ -134,7 +135,7 @@ class CrossTableSynchronizationTest {
 
             BookCopy reloaded = copyDao.findByIdForUpdate(c, copy.getCopyId()).orElseThrow();
             assertEquals(CopyStatus.BORROWED, reloaded.getStatus(),
-                    "E01 gap: copy.status stays BORROWED after markReturned — DAO does not auto-sync");
+                    "E01 gap: copy.status stays BORROWED after markReturned â€” DAO does not auto-sync");
         }
     }
 
@@ -142,7 +143,7 @@ class CrossTableSynchronizationTest {
     void manualSyncKeepsCopyStatusConsistentWithLoanState() throws Exception {
         // The intended usage pattern: the Service layer (Person 2) is responsible for
         // calling both DAOs in the right order inside one transaction. This test shows
-        // that the manual sync DOES keep the two tables consistent — the gap is the lack
+        // that the manual sync DOES keep the two tables consistent â€” the gap is the lack
         // of automatic enforcement, not a fundamental bug in the DAOs.
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
@@ -177,7 +178,7 @@ class CrossTableSynchronizationTest {
     void dashboardCountsMatchUnderlyingTablesOnEmptyDatabase() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
-            // seedReferenceData adds 3 publishers, 4 categories, 4 authors — no books/copies/members/loans.
+            // seedReferenceData adds 3 publishers, 4 categories, 4 authors â€” no books/copies/members/loans.
             DashboardStats stats = dashboardDao.getStats(c, LocalDate.of(2026, 10, 25));
             assertEquals(rawCount(c, "SELECT COUNT(*) FROM books"), stats.getTotalBooks());
             assertEquals(rawCount(c, "SELECT COUNT(*) FROM members"), stats.getTotalMembers());
@@ -222,7 +223,7 @@ class CrossTableSynchronizationTest {
             assertEquals(2, s1.getTotalCopies());
             assertEquals(1, s1.getAvailableCopies());
             assertEquals(0, s1.getActiveLoans(),
-                    "A copy with status=BORROWED does NOT imply an active loan — the dashboard reads loans.return_date, not book_copies.status");
+                    "A copy with status=BORROWED does NOT imply an active loan â€” the dashboard reads loans.return_date, not book_copies.status");
 
             // Insert 2 members (1 ACTIVE, 1 INACTIVE).
             Member active = TestFixtures.insertMember(c, "M-DS-001", "Active", "ds1@test.com");
@@ -242,14 +243,14 @@ class CrossTableSynchronizationTest {
             assertEquals(1, s3.getAvailableCopies(),
                     "availableCopies counts book_copies.status='AVAILABLE', independent of loans");
 
-            // Return the loan — active and overdue counts must drop.
+            // Return the loan â€” active and overdue counts must drop.
             loanDao.markReturned(c, loan.getLoanId(), today);
 
             DashboardStats s4 = dashboardDao.getStats(c, today);
             assertEquals(0, s4.getActiveLoans());
             assertEquals(0, s4.getOverdueLoans());
             assertEquals(1, s4.getAvailableCopies(),
-                    "Returning a loan does not change book_copies.status — only an explicit updateStatus call does");
+                    "Returning a loan does not change book_copies.status â€” only an explicit updateStatus call does");
         }
     }
 
@@ -284,12 +285,12 @@ class CrossTableSynchronizationTest {
                     member.getMemberId());
             assertEquals(raw, found.getActiveLoanCount());
 
-            // Return one — count must drop to 2.
+            // Return one â€” count must drop to 2.
             loanDao.markReturned(c, l1.getLoanId(), today);
             Member afterOne = memberDao.findById(c, member.getMemberId()).orElseThrow();
             assertEquals(2, afterOne.getActiveLoanCount());
 
-            // Return another — count must drop to 1.
+            // Return another â€” count must drop to 1.
             loanDao.markReturned(c, l2.getLoanId(), today);
             Member afterTwo = memberDao.findById(c, member.getMemberId()).orElseThrow();
             assertEquals(1, afterTwo.getActiveLoanCount());
@@ -348,11 +349,11 @@ class CrossTableSynchronizationTest {
                     book.getBookId());
             assertEquals(raw, (long) found.getAvailableCopies());
 
-            // Flip one AVAILABLE → BORROWED; count must drop.
+            // Flip one AVAILABLE â†’ BORROWED; count must drop.
             copyDao.updateStatus(c, a1.getCopyId(), CopyStatus.BORROWED);
             assertEquals(1, bookDao.findById(c, book.getBookId()).orElseThrow().getAvailableCopies());
 
-            // Flip another AVAILABLE → MAINTENANCE; count drops again.
+            // Flip another AVAILABLE â†’ MAINTENANCE; count drops again.
             copyDao.updateStatus(c, a2.getCopyId(), CopyStatus.MAINTENANCE);
             assertEquals(0, bookDao.findById(c, book.getBookId()).orElseThrow().getAvailableCopies());
 
@@ -377,10 +378,10 @@ class CrossTableSynchronizationTest {
             LocalDate loanDate = LocalDate.of(2026, 9, 1);
             Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
-            // Active loan — existsByBookId is true.
+            // Active loan â€” existsByBookId is true.
             assertTrue(loanDao.existsByBookId(c, book.getBookId()));
 
-            // After return — still true (history is preserved).
+            // After return â€” still true (history is preserved).
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(5));
             assertTrue(loanDao.existsByBookId(c, book.getBookId()),
                     "existsByBookId checks ANY loan history, including returned loans");
@@ -434,7 +435,7 @@ class CrossTableSynchronizationTest {
             Book book1 = TestFixtures.insertBook(c, "978-O1-000-000-001", "Order Book 1");
             Book book2 = TestFixtures.insertBook(c, "978-O2-000-000-002", "Order Book 2");
 
-            // Same author set, different order — result must be the same.
+            // Same author set, different order â€” result must be the same.
             bookAuthorDao.replaceForBook(c, book1.getBookId(), List.of(1, 2, 3));
             bookAuthorDao.replaceForBook(c, book2.getBookId(), List.of(3, 2, 1));
 
@@ -461,7 +462,7 @@ class CrossTableSynchronizationTest {
             bookAuthorDao.replaceForBook(c, book.getBookId(), List.of(1, 2, 3));
             assertEquals(3, bookAuthorDao.findByBookId(c, book.getBookId()).size());
 
-            // Book has no copies → delete succeeds → book_authors rows are CASCADE-deleted.
+            // Book has no copies â†’ delete succeeds â†’ book_authors rows are CASCADE-deleted.
             bookDao.delete(c, book.getBookId());
 
             long remaining = rawCount(c, "SELECT COUNT(*) FROM book_authors WHERE book_id = ?",
@@ -484,7 +485,7 @@ class CrossTableSynchronizationTest {
                     st.execute("DELETE FROM publishers WHERE publisher_id = 1");
                 }
             });
-            assertEquals("23503", error.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSQLState());
         }
     }
 
@@ -498,7 +499,7 @@ class CrossTableSynchronizationTest {
                     st.execute("DELETE FROM categories WHERE category_id = 1");
                 }
             });
-            assertEquals("23503", error.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSQLState());
         }
     }
 
@@ -511,7 +512,7 @@ class CrossTableSynchronizationTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> bookDao.delete(c, book.getBookId()));
-            assertEquals("23503", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSqlState());
             // Book is still there.
             assertTrue(bookDao.findById(c, book.getBookId()).isPresent());
         }
@@ -535,7 +536,7 @@ class CrossTableSynchronizationTest {
                     st.execute("DELETE FROM book_copies WHERE copy_id = " + copy.getCopyId());
                 }
             });
-            assertEquals("23503", error.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSQLState());
 
             // Even after the loan is returned, the loan ROW still exists (history), so the
             // copy is still protected from deletion.
@@ -545,8 +546,8 @@ class CrossTableSynchronizationTest {
                     st.execute("DELETE FROM book_copies WHERE copy_id = " + copy.getCopyId());
                 }
             });
-            assertEquals("23503", stillRestricted.getSQLState(),
-                    "RESTRICT applies to ALL loans, not just active ones — loan history is preserved");
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, stillRestricted.getSQLState(),
+                    "RESTRICT applies to ALL loans, not just active ones â€” loan history is preserved");
         }
     }
 
@@ -562,13 +563,13 @@ class CrossTableSynchronizationTest {
             Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(4));
 
-            // Member still has loan history → RESTRICT prevents deletion.
+            // Member still has loan history â†’ RESTRICT prevents deletion.
             SQLException error = assertThrows(SQLException.class, () -> {
                 try (Statement st = c.createStatement()) {
                     st.execute("DELETE FROM members WHERE member_id = " + member.getMemberId());
                 }
             });
-            assertEquals("23503", error.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSQLState());
         }
     }
 
@@ -584,13 +585,13 @@ class CrossTableSynchronizationTest {
                     st.execute("DELETE FROM authors WHERE author_id = 1");
                 }
             });
-            assertEquals("23503", error.getSQLState());
+            assertEquals(AppConfig.SQLSTATE_FOREIGN_KEY_VIOLATION, error.getSQLState());
         }
     }
 
     @Test
     void cascadeDeleteBookAlsoRemovesCascadeLinkedAuthorsWhenNoOtherReferences() throws Exception {
-        // Verify the CASCADE direction: book_authors.book_id → books.book_id ON DELETE CASCADE.
+        // Verify the CASCADE direction: book_authors.book_id â†’ books.book_id ON DELETE CASCADE.
         // When a book is deleted (and it has no copies to trip RESTRICT), the book_authors
         // rows for that book are removed. The author rows themselves are preserved.
         try (Connection c = TestDatabase.getConnection()) {
@@ -611,7 +612,7 @@ class CrossTableSynchronizationTest {
 
             long authorsAfter = rawCount(c, "SELECT COUNT(*) FROM authors");
             assertEquals(authorsBefore, authorsAfter,
-                    "Author rows themselves are preserved — only the link table is CASCADE-deleted");
+                    "Author rows themselves are preserved â€” only the link table is CASCADE-deleted");
         }
     }
 
@@ -648,3 +649,4 @@ class CrossTableSynchronizationTest {
         }
     }
 }
+

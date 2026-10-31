@@ -8,6 +8,7 @@ import com.library.exception.DataAccessException;
 import com.library.model.Author;
 import com.library.model.Category;
 import com.library.model.Publisher;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -37,7 +38,7 @@ class JdbcReferenceDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> categoryDao.insert(c, new Category(null, "NOVEL")));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 

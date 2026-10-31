@@ -1,4 +1,4 @@
-package com.library.dao;
+﻿package com.library.dao;
 
 import com.library.dao.jdbc.JdbcLoanDAO;
 import com.library.dao.support.TestDatabase;
@@ -12,6 +12,7 @@ import com.library.model.Page;
 import com.library.model.criteria.LoanSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -50,7 +51,7 @@ class LoanBusinessLogicTest {
             BookCopy copy = TestFixtures.insertCopy(c, book, "MB-CP-001", CopyStatus.AVAILABLE);
             Member member = TestFixtures.insertMember(c, "M-MB-001", "Member MB", "mb@test.com");
 
-            // Jan 20 + 14 days = Feb 3 (crosses January→February boundary).
+            // Jan 20 + 14 days = Feb 3 (crosses Januaryâ†’February boundary).
             LocalDate loanDate = LocalDate.of(2026, 1, 20);
             Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
@@ -123,7 +124,7 @@ class LoanBusinessLogicTest {
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), member.getMemberId(),
                             loanDate, loanDate.plusDays(15), null, LoanStatus.ACTIVE)));
-            assertEquals("23514", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState());
         }
     }
 
@@ -145,7 +146,7 @@ class LoanBusinessLogicTest {
             // First call: 1 row affected.
             assertEquals(1, loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(5)));
 
-            // Second call: 0 rows affected — the WHERE clause excludes returned loans.
+            // Second call: 0 rows affected â€” the WHERE clause excludes returned loans.
             assertEquals(0, loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(7)));
 
             // Third call after a week: still 0 rows. Idempotency holds.
@@ -171,7 +172,7 @@ class LoanBusinessLogicTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.markReturned(c, loan.getLoanId(), loanDate.minusDays(1)));
-            assertEquals("23514", error.getSqlState(),
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState(),
                     "return_date >= loan_date is enforced by CHECK constraint loans_return_date_check");
 
             // Verify the loan is still ACTIVE (the failed UPDATE was atomic).
@@ -201,7 +202,7 @@ class LoanBusinessLogicTest {
 
     @Test
     void markReturnedWithFutureReturnDateIsAllowedByDatabase() throws Exception {
-        // This test documents the E11 gap noted in README §6: the schema does not enforce
+        // This test documents the E11 gap noted in README Â§6: the schema does not enforce
         // that return_date <= CURRENT_DATE. The DAO also does not check it. The check
         // constraint only requires return_date >= loan_date. If a future fix adds the
         // constraint, this test will fail and must be updated to expect a 23514 error.
@@ -214,7 +215,7 @@ class LoanBusinessLogicTest {
             LocalDate loanDate = LocalDate.of(2026, 5, 1);
             Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
-            // return_date far in the future — accepted today because no rule forbids it.
+            // return_date far in the future â€” accepted today because no rule forbids it.
             LocalDate futureReturn = LocalDate.of(2099, 12, 31);
             assertEquals(1, loanDao.markReturned(c, loan.getLoanId(), futureReturn));
             Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
@@ -289,17 +290,17 @@ class LoanBusinessLogicTest {
 
             LocalDate loanDate = LocalDate.of(2026, 3, 1);
 
-            // RETURNED with return_date — accepted (inserting historical data).
+            // RETURNED with return_date â€” accepted (inserting historical data).
             Loan historical = new Loan(null, copy.getCopyId(), member.getMemberId(),
                     loanDate, loanDate.plusDays(14), loanDate.plusDays(5), LoanStatus.RETURNED);
             assertEquals(1, loanDao.insert(c, historical));
             assertEquals(LoanStatus.RETURNED, loanDao.findByIdForUpdate(c, historical.getLoanId()).orElseThrow().getStatus());
 
-            // RETURNED without return_date — rejected by CHECK constraint.
+            // RETURNED without return_date â€” rejected by CHECK constraint.
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), member.getMemberId(),
                             loanDate.plusDays(30), loanDate.plusDays(44), null, LoanStatus.RETURNED)));
-            assertEquals("23514", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState());
         }
     }
 
@@ -448,13 +449,13 @@ class LoanBusinessLogicTest {
             LocalDate loanDate = LocalDate.of(2026, 10, 1);
             TestFixtures.insertActiveLoan(c, copy, member, loanDate);
 
-            // Pretend "today" is Oct 10 — not overdue.
+            // Pretend "today" is Oct 10 â€” not overdue.
             LoanSearchCriteria notOverdue = new LoanSearchCriteria();
             notOverdue.setOverdueOnly(true);
             notOverdue.setToday(LocalDate.of(2026, 10, 10));
             assertEquals(0, loanDao.search(c, notOverdue).getTotalElements());
 
-            // Pretend "today" is Oct 20 — overdue.
+            // Pretend "today" is Oct 20 â€” overdue.
             LoanSearchCriteria overdue = new LoanSearchCriteria();
             overdue.setOverdueOnly(true);
             overdue.setToday(LocalDate.of(2026, 10, 20));
@@ -537,3 +538,4 @@ class LoanBusinessLogicTest {
         }
     }
 }
+

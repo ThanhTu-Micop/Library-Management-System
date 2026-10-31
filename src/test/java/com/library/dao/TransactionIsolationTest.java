@@ -14,6 +14,7 @@ import com.library.model.Member;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -126,7 +127,7 @@ class TransactionIsolationTest {
             //   23505 — tx1 committed first, then tx2 hit the unique violation.
             //   55P03 — tx1 was still holding the write lock; tx2's lock_timeout fired.
             String state = ex.getSqlState();
-            assertTrue("23505".equals(state) || "55P03".equals(state),
+            assertTrue(AppConfig.SQLSTATE_UNIQUE_VIOLATION.equals(state) || "55P03".equals(state),
                     "Expected 23505 (unique_violation) or 55P03 (lock_not_available), got " + state);
         } finally {
             tx1.rollback();
@@ -333,7 +334,7 @@ class TransactionIsolationTest {
             DataAccessException ex = assertThrows(DataAccessException.class,
                     () -> bookDao.insert(tx2,
                             new Book(null, "978-CI-000-000-001", "Concurrent ISBN 2", 1, 1, 2021)));
-            assertSqlState("23505", ex);
+            assertSqlState(AppConfig.SQLSTATE_UNIQUE_VIOLATION, ex);
             tx2.rollback();
         } finally {
             if (!tx1.isClosed()) {
@@ -364,7 +365,7 @@ class TransactionIsolationTest {
             DataAccessException ex = assertThrows(DataAccessException.class,
                     () -> memberDao.insert(tx2,
                             new Member(null, "M-CE-002", "Email Owner 2", "DUP@TEST.COM", MemberStatus.ACTIVE)));
-            assertSqlState("23505", ex,
+            assertSqlState(AppConfig.SQLSTATE_UNIQUE_VIOLATION, ex,
                     "Email unique index ux_members_email_lower is case-insensitive; second insert must fail with 23505");
             tx2.rollback();
         } finally {

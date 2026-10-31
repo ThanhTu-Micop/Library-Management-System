@@ -11,6 +11,7 @@ import com.library.model.BookCopy;
 import com.library.model.Page;
 import com.library.model.criteria.BookSearchCriteria;
 import com.library.model.enums.CopyStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -98,7 +99,7 @@ class JdbcBookDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> dao.insert(c, new Book(null, "978-DUP-000-001", "Book Two", 1, 1, 2011)));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
             assertTrue(dao.isbnExists(c, "978-DUP-000-001", null));
             assertFalse(dao.isbnExists(c, "978-NEW-000-001", null));
         }
@@ -115,7 +116,7 @@ class JdbcBookDAOTest {
 
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> dao.insert(c, new Book(null, "123456789012", "Twelve", 1, 1, 2010)));
-            assertEquals("23514", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState());
         }
     }
 

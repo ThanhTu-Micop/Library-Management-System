@@ -15,6 +15,7 @@ import com.library.model.Member;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 
 import java.sql.Connection;
 import java.time.LocalDate;
@@ -85,7 +86,7 @@ public final class TestFixtures {
     public static Loan insertActiveLoan(Connection c, BookCopy copy, Member member,
                                         LocalDate loanDate) {
         Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
+                loanDate, loanDate.plusDays(AppConfig.LOAN_PERIOD_DAYS), null, LoanStatus.ACTIVE);
         LOAN_DAO.insert(c, loan);
         return loan;
     }

@@ -95,18 +95,4 @@ public final class DatabaseConnection {
         }
     }
 
-    /**
-     * Closes a connection without throwing. Safe to call with {@code null}.
-     *
-     * @param connection the connection to close, possibly {@code null}
-     */
-    public static void closeQuietly(Connection connection) {
-        if (connection != null) {
-            try {
-                connection.close();
-            } catch (SQLException ignored) {
-                // A logging framework would record this; quiet close keeps cleanup deterministic.
-            }
-        }
-    }
 }

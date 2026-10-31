@@ -16,6 +16,7 @@ import com.library.model.criteria.LoanSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
 import com.library.model.enums.MemberStatus;
+import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -102,7 +103,7 @@ class JdbcLoanDAOTest {
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), member.getMemberId(),
                             loanDate, loanDate.plusDays(13), null, LoanStatus.ACTIVE)));
-            assertEquals("23514", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState());
         }
     }
 
@@ -126,7 +127,7 @@ class JdbcLoanDAOTest {
             DataAccessException error = assertThrows(DataAccessException.class,
                     () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), second.getMemberId(),
                             loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE)));
-            assertEquals("23505", error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
