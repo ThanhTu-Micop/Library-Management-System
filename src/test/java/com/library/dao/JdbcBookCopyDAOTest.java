@@ -81,26 +81,22 @@ class JdbcBookCopyDAOTest {
         }
     }
 
+    /** Deleting from a book with zero copies and from a book with several copies are both valid. */
     @Test
-    void deleteByBookIdWithZeroCopiesSucceeds() throws Exception {
+    void deleteByBookIdHandlesZeroAndMultipleCopies() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
-            Book book = TestFixtures.insertBook(c, "978-COPY-000-004", "No Copies Book");
-            assertDoesNotThrow(() -> copyDao.deleteByBookId(c, book.getBookId()));
-            assertTrue(copyDao.findByBookId(c, book.getBookId()).isEmpty());
-        }
-    }
 
-    @Test
-    void deleteByBookIdWithMultipleCopies() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            Book book = TestFixtures.insertBook(c, "978-COPY-000-005", "Many Copies Book");
-            copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-005-A", CopyStatus.AVAILABLE));
-            copyDao.insert(c, new BookCopy(null, book.getBookId(), "COPY-005-B", CopyStatus.MAINTENANCE));
+            Book empty = TestFixtures.insertBook(c, "978-COPY-000-004", "No Copies Book");
+            assertDoesNotThrow(() -> copyDao.deleteByBookId(c, empty.getBookId()));
+            assertTrue(copyDao.findByBookId(c, empty.getBookId()).isEmpty());
 
-            copyDao.deleteByBookId(c, book.getBookId());
-            assertTrue(copyDao.findByBookId(c, book.getBookId()).isEmpty());
+            Book many = TestFixtures.insertBook(c, "978-COPY-000-005", "Many Copies Book");
+            copyDao.insert(c, new BookCopy(null, many.getBookId(), "COPY-005-A", CopyStatus.AVAILABLE));
+            copyDao.insert(c, new BookCopy(null, many.getBookId(), "COPY-005-B", CopyStatus.MAINTENANCE));
+
+            copyDao.deleteByBookId(c, many.getBookId());
+            assertTrue(copyDao.findByBookId(c, many.getBookId()).isEmpty());
         }
     }
 

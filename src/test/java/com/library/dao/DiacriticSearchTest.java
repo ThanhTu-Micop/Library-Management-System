@@ -23,9 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Vietnamese diacritic search tests.
  *
  * <p>PostgreSQL's {@code unaccent} extension normalizes both the stored column and the
- * caller-supplied pattern, so a title such as {@code Chí Phèo} matches {@code Chí Phèo},
- * {@code Chi Pheo}, {@code CHÍ PHÈO}, and {@code chí phèo}. This class also verifies that
- * LIKE wildcards remain escaped while accent normalization is active.
+ * caller-supplied pattern. The four book-keyword variants (accented, unaccented, uppercase,
+ * partial) are one rule and are grouped in a single test with {@code assertAll}.
  */
 class DiacriticSearchTest {
 
@@ -56,53 +55,33 @@ class DiacriticSearchTest {
     }
 
     @Test
-    void accentedKeywordFindsAccentedTitle() throws Exception {
+    void bookKeywordSearchIgnoresCaseDiacriticsAndPosition() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
             TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
 
-            List<Book> found = searchBooks(c, CHI_PHEO_TITLE);
-
-            assertEquals(1, found.size());
-            assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
-        }
-    }
-
-    @Test
-    void unaccentedKeywordFindsAccentedTitle() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
-
-            List<Book> found = searchBooks(c, "Chi Pheo");
-
-            assertEquals(1, found.size(), "Searching without diacritics must still find Chí Phèo");
-            assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
-        }
-    }
-
-    @Test
-    void uppercaseAccentedKeywordFindsTitle() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
-
-            List<Book> found = searchBooks(c, "CHÍ PHÈO");
-
-            assertEquals(1, found.size(), "ILIKE must remain case-insensitive after unaccent normalization");
-        }
-    }
-
-    @Test
-    void partialUnaccentedKeywordFindsTitle() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            TestFixtures.insertBook(c, CHI_PHEO_ISBN, CHI_PHEO_TITLE, 1941);
-
-            List<Book> found = searchBooks(c, "pheo");
-
-            assertEquals(1, found.size());
-            assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
+            assertAll(
+                    () -> {
+                        List<Book> found = searchBooks(c, CHI_PHEO_TITLE);
+                        assertEquals(1, found.size());
+                        assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
+                    },
+                    () -> {
+                        List<Book> found = searchBooks(c, "Chi Pheo");
+                        assertEquals(1, found.size(),
+                                "Searching without diacritics must still find Chí Phèo");
+                        assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
+                    },
+                    () -> {
+                        List<Book> found = searchBooks(c, "CHÍ PHÈO");
+                        assertEquals(1, found.size(),
+                                "ILIKE must remain case-insensitive after unaccent normalization");
+                    },
+                    () -> {
+                        List<Book> found = searchBooks(c, "pheo");
+                        assertEquals(1, found.size());
+                        assertEquals(CHI_PHEO_TITLE, found.get(0).getTitle());
+                    });
         }
     }
 

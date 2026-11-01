@@ -11,7 +11,6 @@ import com.library.model.Book;
 import com.library.model.BookCopy;
 import com.library.model.Loan;
 import com.library.model.Member;
-import com.library.model.Page;
 import com.library.model.criteria.LoanSearchCriteria;
 import com.library.model.enums.CopyStatus;
 import com.library.model.enums.LoanStatus;
@@ -28,8 +27,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * DAO tests for {@link JdbcLoanDAO} and the loan constraints on {@code library_test}.
  *
- * <p>This covers the 14-day rule, one active loan per copy, returned-loan history,
- * caller-supplied dates, and joined display fields.
+ * <p>The 14-day rule, return transitions, overdue counting, and uniqueness scope are owned
+ * by {@link LoanBusinessLogicTest}; this class keeps persistence, history, and projection
+ * checks for the loan DAO itself.
  */
 class JdbcLoanDAOTest {
 
@@ -67,121 +67,44 @@ class JdbcLoanDAOTest {
         }
     }
 
-    @Test
-    void validDueDateIsExactlyLoanDatePlus14Days() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            Book book = TestFixtures.newBook("978-14DAY-000-001", "14 Day Rule");
-            bookDao.insert(c, book);
-            BookCopy copy = new BookCopy(null, book.getBookId(), "14DAY-CP-001", CopyStatus.AVAILABLE);
-            copyDao.insert(c, copy);
-            Member member = new Member(null, "M-14DAY-001", "Rule Tester", "rule@test.com", MemberStatus.ACTIVE);
-            memberDao.insert(c, member);
-
-            LocalDate loanDate = LocalDate.of(2026, 10, 25);
-            Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                    loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
-            loanDao.insert(c, loan);
-
-            Loan found = loanDao.findByIdForUpdate(c, loan.getLoanId()).orElseThrow();
-            assertEquals(loanDate.plusDays(14), found.getDueDate());
-        }
-    }
-
-    @Test
-    void invalidDueDateIsRejectedByCheckConstraint() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            Book book = TestFixtures.newBook("978-BADDUE-000-001", "Bad Due Date");
-            bookDao.insert(c, book);
-            BookCopy copy = new BookCopy(null, book.getBookId(), "BADDUE-CP-001", CopyStatus.AVAILABLE);
-            copyDao.insert(c, copy);
-            Member member = new Member(null, "M-BADDUE-001", "Bad Due", "bad@test.com", MemberStatus.ACTIVE);
-            memberDao.insert(c, member);
-
-            LocalDate loanDate = LocalDate.of(2026, 10, 25);
-            DataAccessException error = assertThrows(DataAccessException.class,
-                    () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), member.getMemberId(),
-                            loanDate, loanDate.plusDays(13), null, LoanStatus.ACTIVE)));
-            assertEquals(AppConfig.SQLSTATE_CHECK_VIOLATION, error.getSqlState());
-        }
-    }
-
+    /** The partial unique index permits only one open loan per copy. */
     @Test
     void onlyOneActiveLoanPerCopy() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
-            Book book = TestFixtures.newBook("978-ACTIVE-000-001", "Active Unique");
-            bookDao.insert(c, book);
-            BookCopy copy = new BookCopy(null, book.getBookId(), "ACTIVE-CP-001", CopyStatus.AVAILABLE);
-            copyDao.insert(c, copy);
-            Member first = new Member(null, "M-ACT-001", "First", "first@test.com", MemberStatus.ACTIVE);
-            Member second = new Member(null, "M-ACT-002", "Second", "second@test.com", MemberStatus.ACTIVE);
-            memberDao.insert(c, first);
-            memberDao.insert(c, second);
+            Book book = TestFixtures.insertBook(c, "978-ACTIVE-000-001", "Active Unique");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "ACTIVE-CP-001", CopyStatus.AVAILABLE);
+            Member first = TestFixtures.insertMember(c, "M-ACT-001", "First", "first@test.com");
+            Member second = TestFixtures.insertMember(c, "M-ACT-002", "Second", "second@test.com");
 
             LocalDate loanDate = LocalDate.of(2026, 10, 25);
-            loanDao.insert(c, new Loan(null, copy.getCopyId(), first.getMemberId(),
-                    loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE));
+            TestFixtures.insertActiveLoan(c, copy, first, loanDate);
 
             DataAccessException error = assertThrows(DataAccessException.class,
-                    () -> loanDao.insert(c, new Loan(null, copy.getCopyId(), second.getMemberId(),
-                            loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE)));
+                    () -> TestFixtures.insertActiveLoan(c, copy, second, loanDate));
             assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
         }
     }
 
+    /** {@code existsByBookId} is true for active and returned history, false with no loans. */
     @Test
-    void countActiveAndOverdueUseCallerSuppliedToday() throws Exception {
+    void existsByBookIdIncludesAllHistory() throws Exception {
         try (Connection c = TestDatabase.getConnection()) {
             TestFixtures.prepare(c);
-            Book book = TestFixtures.newBook("978-COUNT-000-001", "Count Book");
-            bookDao.insert(c, book);
-            BookCopy copy1 = new BookCopy(null, book.getBookId(), "CNT-CP-001", CopyStatus.BORROWED);
-            BookCopy copy2 = new BookCopy(null, book.getBookId(), "CNT-CP-002", CopyStatus.BORROWED);
-            copyDao.insert(c, copy1);
-            copyDao.insert(c, copy2);
-            Member member = new Member(null, "M-COUNT-001", "Counter", "cnt@test.com", MemberStatus.ACTIVE);
-            memberDao.insert(c, member);
+            Book book = TestFixtures.insertBook(c, "978-HIST-000-001", "History Book");
+            BookCopy copy = TestFixtures.insertCopy(c, book, "HIST-CP-001", CopyStatus.AVAILABLE);
+            Member member = TestFixtures.insertMember(c, "M-HIST-001", "History", "hist@test.com");
 
-            LocalDate today = LocalDate.of(2026, 10, 25);
-            loanDao.insert(c, new Loan(null, copy1.getCopyId(), member.getMemberId(),
-                    today.minusDays(3), today.plusDays(11), null, LoanStatus.ACTIVE));
-            loanDao.insert(c, new Loan(null, copy2.getCopyId(), member.getMemberId(),
-                    today.minusDays(24), today.minusDays(10), null, LoanStatus.ACTIVE));
-
-            assertEquals(2, loanDao.countActive(c));
-            assertEquals(1, loanDao.countOverdue(c, today));
-            assertEquals(2, loanDao.countOverdue(c, today.plusDays(12)));
-
-            LoanSearchCriteria criteria = new LoanSearchCriteria();
-            criteria.setOverdueOnly(true);
-            criteria.setToday(today);
-            Page<Loan> overdue = loanDao.search(c, criteria);
-            assertEquals(1, overdue.getTotalElements());
-            assertEquals(copy2.getCopyId(), overdue.getContent().get(0).getCopyId());
-        }
-    }
-
-    @Test
-    void existsByBookIdIncludesReturnedLoans() throws Exception {
-        try (Connection c = TestDatabase.getConnection()) {
-            TestFixtures.prepare(c);
-            Book book = TestFixtures.newBook("978-HIST-000-001", "History Book");
-            bookDao.insert(c, book);
-            BookCopy copy = new BookCopy(null, book.getBookId(), "HIST-CP-001", CopyStatus.BORROWED);
-            copyDao.insert(c, copy);
-            Member member = new Member(null, "M-HIST-001", "History", "hist@test.com", MemberStatus.ACTIVE);
-            memberDao.insert(c, member);
+            assertFalse(loanDao.existsByBookId(c, book.getBookId()),
+                    "A book with no loans must not report existing loan history");
 
             LocalDate loanDate = LocalDate.of(2026, 9, 1);
-            Loan loan = new Loan(null, copy.getCopyId(), member.getMemberId(),
-                    loanDate, loanDate.plusDays(14), null, LoanStatus.ACTIVE);
-            loanDao.insert(c, loan);
+            Loan loan = TestFixtures.insertActiveLoan(c, copy, member, loanDate);
             assertTrue(loanDao.existsByBookId(c, book.getBookId()));
 
             loanDao.markReturned(c, loan.getLoanId(), loanDate.plusDays(5));
-            assertTrue(loanDao.existsByBookId(c, book.getBookId()));
+            assertTrue(loanDao.existsByBookId(c, book.getBookId()),
+                    "existsByBookId checks ANY loan history, including returned loans");
         }
     }
 

@@ -5,7 +5,7 @@ Library Management System — đồ án phân chia làm 2 người:
 - **Person 1:** PostgreSQL database, SQL, DAO/JDBC, DAO tests, JSP/UI, CSS/JS, docs.
 - **Person 2:** Service, business logic, Controller/Servlet, build (`pom.xml`), WAR, deployment, HTTP integration.
 
-> Trạng thái hiện tại: Person 1 scope đã hoàn thiện và kiểm chứng bằng công cụ độc lập (không Maven/WAR/Tomcat deployment). Phần build, deployment và HTTP vẫn còn chờ Person 2 (xem mục [Known gaps](#known-gaps)).
+> Trạng thái hiện tại (cập nhật 2026-11-01): Person 1 scope đã hoàn thiện, đã dọn dead code, gom hằng số dùng chung và tái tổ hợp bộ test theo ownership, rồi kiểm chứng lại bằng công cụ độc lập — **39/39 main + 14/14 test biên dịch, 74/74 test pass**. Vẫn **chưa có Maven/WAR/Tomcat deployment**; build, deployment và HTTP còn chờ Person 2 (xem mục 6 Known gaps và `docs/person2-controller-todo.md`).
 
 ## 1. Cấu trúc dự án
 
@@ -18,7 +18,7 @@ src/main/webapp/WEB-INF/tags/pagination.tag
 src/main/webapp/assets/{css,js}
 src/test/java/com/library/{dao,dao/support}
 scripts/{run-tests.ps1,run-tests.sh,with-postgres.ps1}
-docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,test-suite-report}.md
+docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,person2-controller-todo,test-suite-report}.md
 ```
 
 ## 2. Cơ sở dữ liệu (Person 1)
@@ -80,7 +80,7 @@ javac --release 17 -encoding UTF-8 -d <main-out> -cp postgresql-42.7.14.jar (src
 javac --release 17 -encoding UTF-8 -d <test-out> -cp "<main-out>;postgresql-42.7.14.jar;junit-platform-console-standalone-1.14.4.jar" (src/test/java/**/*.java)
 ```
 
-Kết quả lần kiểm chứng gần nhất: **40/40 main**, **14/14 test** file biên dịch thành công (12 class test + `TestDatabase` + `TestFixtures`).
+Kết quả lần kiểm chứng gần nhất (2026-11-01): **39/39 main** (40 class file, gồm nested `JdbcSupport$RowMapper`), **14/14 test** file biên dịch thành công (12 class test + `TestDatabase` + `TestFixtures`).
 
 ### 3.2 Kiểm thử DAO (JUnit Platform Console, không Maven/Surefire)
 
@@ -88,7 +88,7 @@ Kết quả lần kiểm chứng gần nhất: **40/40 main**, **14/14 test** fi
 java -jar junit-platform-console-standalone-1.14.4.jar execute -cp "<main-out>;<test-out>;postgresql-42.7.14.jar" --scan-classpath <test-out> --disable-banner
 ```
 
-Kết quả: **124/124 test thành công** (39 test DAO gốc + 78 test mở rộng + 7 test tìm kiếm tiếng Việt), 0 thất bại.
+Kết quả chạy lại ngày **2026-11-01**: **74/74 test thành công** trên **12 class test**, 0 thất bại, 0 skipped, 15/15 container OK. Bộ test đã được tái tổ hợp từ 124 test cũ: mỗi rule có một class sở hữu, các boundary cùng rule gộp bằng `assertAll`, không mất assertion nào. Đây là kết quả standalone JUnit, không phải Maven/Surefire. Chi tiết ma trận test nằm trong `docs/test-suite-report.md`.
 
 ### 3.3 Kiểm tra thủ công PK/FK/quan hệ (48 probe)
 
@@ -154,6 +154,24 @@ Các phần lặp lại đã được gom về một nơi, hành vi DAO/UI khôn
 
 Ngoài ra, `JdbcDashboardDAO` lấy số liệu mượn đang hoạt động/quá hạn từ `JdbcLoanDAO` để predicate chỉ tồn tại một chỗ; các hàm JavaScript không còn được gọi (`showFieldError`, `clearFieldErrors`, `initTogglePassword`) đã được xóa khỏi `app.js`. Kiểm tra SHA-256 xác nhận không có file nào trùng byte trong repo chính. Thư mục `Library-Management-System-tests` bên ngoài repo là bản bàn giao riêng, không bị sửa.
 
+### 3.7 Dọn dead code và gom hằng số (2026-11-01)
+
+- Xóa `model/enums/LoanState.java` — enum không được dùng ở bất kỳ file Java nào; trạng thái overdue là giá trị dẫn xuất, không phải enum lưu DB.
+- Xóa `DatabaseConnection.closeQuietly(Connection)` — không có caller; connection được quản lý bằng try-with-resources.
+- Thay toàn bộ chuỗi SQLState hardcode trong 9 file test bằng `AppConfig.SQLSTATE_UNIQUE_VIOLATION`, `SQLSTATE_FOREIGN_KEY_VIOLATION`, `SQLSTATE_CHECK_VIOLATION`.
+- Thay `loanDate.plusDays(14)` trong `TestFixtures` bằng `AppConfig.LOAN_PERIOD_DAYS`.
+- Sửa lỗi BOM UTF-8 và ký tự bị double-encode (`â€”`, `Â§`, `â†’`) ở 3 file test phát sinh trong lúc refactor; tại thời điểm đó chạy lại toàn bộ suite: 39/39 main, 14/14 test, **124/124 pass**.
+
+Các commit tương ứng: `1929e66` (dọn dead code + hằng số) và `b499748` (thêm checklist Person 2).
+
+### 3.8 Tái tổ hợp bộ test theo ownership (2026-11-01)
+
+- Chuyển assertion về đúng class sở hữu rule: DAO behavior ở `Jdbc*DAOTest`, cross-table ở `CrossTableSynchronizationTest`, raw-SQL schema invariant ở `DataConsistencyTest`.
+- Gộp insert/update của cùng natural key và các boundary cùng rule bằng `assertAll`; giữ nguyên mọi assertion.
+- Kết quả: **124 → 74 test method** trên 12 class test; **145 lambda** và **34 `assertAll`** trong test source.
+- Chạy lại thực tế: **39/39 main + 14/14 test biên dịch, 74/74 test pass, 0 skipped, 15/15 container OK**.
+- Thay đổi tái tổ hợp hiện nằm trong working tree (chưa commit).
+
 ## 4. Giao diện (Person 1)
 
 15 JSP sử dụng JSTL 3.0.1 (`jakarta.tags.*`) + EL, CSS và JavaScript thuần (`app.js`). Không có Java GUI (Swing/AWT/JavaFX). Pagination được tách thành tag dùng chung `WEB-INF/tags/pagination.tag`.
@@ -171,6 +189,8 @@ Tất cả JSP và tag dùng chung đã biên dịch bằng Tomcat `JspC` (16 fi
 | DAO tests (JUnit standalone) | ✅ Hoàn thành | — |
 | JSP / CSS / JS | ✅ Hoàn thành | — |
 | Tài liệu database, thiết kế, audit runtime | ✅ Hoàn thành | — |
+| Dọn dead code + gom hằng số (`AppConfig`) | ✅ Hoàn thành (2026-11-01) | — |
+| Checklist lỗi ngầm cho Controller/Service | ✅ Đã tạo `docs/person2-controller-todo.md` | 🔲 Phải thực hiện |
 | `pom.xml`, Maven Wrapper | ❌ Chưa có | Person 2 |
 | `web.xml`, `context.xml` | ❌ Chưa có | Person 2 |
 | Service, Controller/Servlet, Filter | ❌ Chưa có | Person 2 |
@@ -182,6 +202,7 @@ Tất cả JSP và tag dùng chung đã biên dịch bằng Tomcat `JspC` (16 fi
 - Chưa có `pom.xml` / Maven Wrapper, nên chưa có `mvn test`, `mvn package`, WAR.
 - Chưa có `web.xml`, `context.xml`, Controller, Service, Filter, transaction orchestration.
 - Chưa triển khai HTTP / Tomcat deployment, chưa kiểm tra luồng end-to-end qua trình duyệt.
+- 8 lỗi ngầm cụ thể ở đường Controller/Service (overdue display, `book.authors`, `today`, `equals`/`hashCode`, CSRF, build, integration tests) được liệt kê trong `docs/person2-controller-todo.md`.
 - Các trigger khóa bản sao / chặn thành viên `INACTIVE` mượn sách (E01/E02) **chưa thêm vào database chính** — cần thống nhất cơ chế khóa và thứ tự transaction với Person 2 trước khi áp dụng.
 - Unique cho tên tác giả / nhà xuất bản (E09) cần nhóm chốt quy tắc trùng tên trước khi đặt constraint.
 - Quy tắc ngày mượn/trả không được ở tương lai (E11), kiểu `updated_at`/`TIMESTAMPTZ` (E13/E14), soft-delete (E21) là quyết định nghiệp vụ, chưa áp dụng.
@@ -192,5 +213,7 @@ Tất cả JSP và tag dùng chung đã biên dịch bằng Tomcat `JspC` (16 fi
 - `docs/runtime-toolchain-audit.md` — môi trường, công cụ, bằng chứng kiểm chứng độc lập.
 - `docs/java-concepts-mapping.md` — ánh xạ khái niệm Java với mã nguồn (`file:dòng`) và chỉ dẫn trả lời khi dạy hỏi.
 - `docs/implementation-plan.md` — hợp đồng DAO, quy tắc transaction, kế hoạch UI/UX, Definition of Done.
+- `docs/phase1-plan.md` — kế hoạch Phase 1, ánh xạ 12 chức năng và trạng thái từng lớp.
 - `docs/person1-implementation-plan.md` — kế hoạch chi tiết Person 1 (gốc).
+- `docs/person2-controller-todo.md` — checklist 8 nhóm lỗi ngầm Person 2 phải xử lý khi làm Controller/Service.
 - `docs/test-suite-report.md` — báo cáo bộ test mở rộng (logic nghiệp vụ, data consistency, cross-table, transaction) và kết quả chạy thực tế.

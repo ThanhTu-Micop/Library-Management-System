@@ -5,11 +5,23 @@
 | Status | OPEN |
 | Owner | Person 2 (Controller, Service, transaction, build, HTTP integration) |
 | Created | 2026-11-01 |
+| Last updated | 2026-11-01 |
 | Related | `docs/phase1-plan.md`, `docs/implementation-plan.md` |
 
 > This checklist is a condition for Person 2's Controller/Service work. The DAO layer is
 > implemented and tested; the gaps below are in the missing Controller/Service path or in
 > display fields that the DAO deliberately does not populate.
+
+## Current Person 1 baseline (2026-11-01)
+
+| Item | State |
+|---|---|
+| Compilation | 39/39 main Java files, 14/14 test files, 40 main class files |
+| Tests | 74/74 pass across 12 test classes, 0 skipped, 15/15 JUnit containers successful |
+| Build | Still no `pom.xml`, Maven Wrapper, `web.xml`, or `context.xml` (Person 2) |
+| Dead code | `LoanState` and `DatabaseConnection.closeQuietly` have been removed; do not reference them |
+| Constants available | `AppConfig.SQLSTATE_UNIQUE_VIOLATION`, `SQLSTATE_FOREIGN_KEY_VIOLATION`, `SQLSTATE_CHECK_VIOLATION`, `LOAN_PERIOD_DAYS`, `DEFAULT_PAGE`, `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` |
+| Encoding | 3 test files had a UTF-8 BOM regression; it is fixed. Person 2's `pom.xml` must still set `project.build.sourceEncoding=UTF-8` |
 
 ## 1. Overdue display fields
 
@@ -61,6 +73,7 @@
 - [ ] Preferred fix: if the id is `null`, use identity (`this == o`); otherwise
   compare the id.
 - [ ] Add a test proving two unsaved entities are not equal.
+- [ ] This is still **unfixed** in the current baseline; do not assume it was changed by the 2026-11-01 cleanup.
 
 ## 6. CSRF
 
@@ -91,7 +104,7 @@
 
 ## Acceptance criteria
 
-- `mvn clean test` passes (existing 124 DAO tests + new service tests).
+- `mvn clean test` passes (existing 74 DAO tests + new service tests).
 - The WAR deploys on Tomcat 10.1.61.
 - All 12 functions work end to end through HTTP.
 - No overdue badge/column shows `false` / `0` for an actually overdue loan.
@@ -110,3 +123,13 @@
   `Loan.overdue`, `Loan.daysOverdue`.
 - If Person 1 fixes the `today` default or `equals`/`hashCode`, update this
   checklist and remove the corresponding workaround.
+- `LoanState` no longer exists. Use `LoanStatus` for the stored loan status and
+  compute overdue from `dueDate`/`returnDate`; do not recreate the enum.
+
+## Revision history
+
+| Date | Change |
+|---|---|
+| 2026-11-01 | Created with 8 gap groups and acceptance criteria (commit `b499748`) |
+| 2026-11-01 | Added the current Person 1 baseline, the removed-code notice, and the explicit note that `equals`/`hashCode` and `today` are still unfixed. The baseline at creation was 124/124 tests |
+| 2026-11-01 | Recombined the DAO suite from 124 to 74 methods by rule ownership without dropping assertions; the current baseline is 39/39 main, 14/14 test, 74/74 tests pass |

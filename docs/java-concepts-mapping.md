@@ -17,16 +17,16 @@ The mapping is intentionally evidence-based:
 
 | Item | Value |
 |---|---|
-| Last reviewed | 2026-10-30 |
-| Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, docs, and shared refactor helpers present; no Maven build or deployment descriptors |
-| Git state | `main` plus feature branch `feature/test-suite-and-vietnamese-search`; see `git log` for the latest commit |
+| Last reviewed | 2026-11-01 |
+| Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, docs, and shared refactor helpers present; dead code removed and constants centralized; no Maven build or deployment descriptors |
+| Git state | `main` at `b499748` plus the fully merged feature branch `feature/test-suite-and-vietnamese-search`; see `git log` for details |
 | Code evidence audit | Class/method references reviewed against the current source; 9/9 DAO interface/implementation pairs matched; 3 locking SQL queries confirmed; shared-helper references checked after refactor |
-| Java source inspected | 40 main files, 14 test files |
-| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 2 shared JDBC support classes, 4 enums, 43 test-only assertion lambdas, 0 `switch`, 8 `Object...` varargs methods in `JdbcSupport` |
+| Java source inspected | 39 main files, 14 test files |
+| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 2 shared JDBC support classes, 3 enums, 145 test-only lambdas (including 34 `assertAll` groups), 0 `switch`, 8 `Object...` varargs methods in `JdbcSupport` |
 | JSP/CSS/JS source inspected | 15 JSPs, 1 shared tag, `app.css`, `app.js` |
 | SQL source inspected | `schema.sql`, `seed.sql` |
-| Compilation evidence | `javac --release 17 -encoding UTF-8`: 40/40 main and 14/14 test files compiled |
-| Test evidence | Standalone JUnit Platform Console: 124/124 DAO tests pass |
+| Compilation evidence | `javac --release 17 -encoding UTF-8`: 39/39 main and 14/14 test files compiled (2026-11-01) |
+| Test evidence | Standalone JUnit Platform Console: 74/74 DAO tests pass across 12 test classes (2026-11-01, after suite recombination) |
 | JSP evidence | Tomcat `JspC`: 15 JSPs + 1 tag produced 16 Java/class files with 0 errors |
 | Course material files in workspace | None |
 
@@ -66,7 +66,7 @@ Rows referencing service, controller, filter, or `web.xml` code are documented h
 | 5. Inheritance, Package, Interface | Interfaces and polymorphism | `dao/BookDAO.java` + `dao/jdbc/JdbcBookDAO.java`; the other 8 DAO interface/JDBC pairs; tests typed to DAO interfaces | DAO contracts are separate from JDBC implementations, so callers and tests depend on interfaces rather than concrete classes | Implemented |
 | 5. Inheritance, Package, Interface | Inheritance | `exception/DataAccessException.java extends RuntimeException`; `dao/jdbc/AbstractNamedEntityDAO.java` + `JdbcAuthorDAO`/`JdbcCategoryDAO`/`JdbcPublisherDAO`; `model/criteria/PageCriteria.java` + the three criteria classes; Person 2: Servlets extend `HttpServlet` | `DataAccessException` reuses runtime-exception behavior and adds SQLState/cause context. Reference DAOs inherit common CRUD/search from the generic base class, and criteria inherit pagination state from `PageCriteria`. The shared `LibraryException` hierarchy and Servlet inheritance remain Person 2 work | Partially implemented |
 | 6. Exception Handling, Enumerations, IO-Files | Exception handling and resource management | `dao/jdbc/Jdbc*DAO.java`, `config/DatabaseConnection.java`, `exception/DataAccessException.java` | Wraps `SQLException` with context and cause, preserves SQLState, uses try-with-resources for JDBC resources, and leaves commit/rollback to the caller | Implemented |
-| 6. Exception Handling, Enumerations, IO-Files | Enumerations | `model/enums/CopyStatus.java`, `MemberStatus.java`, `LoanStatus.java`, `LoanState.java` | Type-safe status values mirror database CHECK constraints; `LoanState` documents the derived UI state without storing an `OVERDUE` row value | Implemented |
+| 6. Exception Handling, Enumerations, IO-Files | Enumerations | `model/enums/CopyStatus.java`, `MemberStatus.java`, `LoanStatus.java` | Type-safe status values mirror database CHECK constraints. Overdue is a derived display value computed from `due_date`/`return_date`, so it is not stored as an enum. `LoanState` was removed during the 2026-11-01 cleanup because nothing referenced it | Implemented |
 | 7. Generic, ArrayList, Lambda Expression | Generics | `model/Page.java` | One generic pagination wrapper serves book, member, loan, and overdue results without duplicating result classes | Implemented |
 | 7. Generic, ArrayList, Lambda Expression | `ArrayList` / `List` collections | `dao/jdbc/Jdbc*DAO.java` | DAO result mapping accumulates domain objects in `ArrayList` and returns `List`/`Page` abstractions | Implemented |
 | 7. Generic, ArrayList, Lambda Expression | Lambda expressions | `src/test/java/com/library/dao/*Test.java` | Tests use lambdas with `assertThrows`, `assertDoesNotThrow`, and similar JUnit APIs. No production lambda was added artificially | Implemented (tests only) |
@@ -104,7 +104,7 @@ Path prefixes used below:
 | 6. Enum | Enumeration | `main/model/enums/LoanStatus.java`; `main/model/enums/CopyStatus.java`; `main/model/enums/MemberStatus.java` | Status values are type-safe constants and mirror database `CHECK` constraints. |
 | 7. Generic | Generic class and generic parameter | `main/model/Page.java`; `main/dao/BookDAO.java`; `main/dao/jdbc/AbstractNamedEntityDAO.java` | `Page<T>`, `List<T>`, and the generic reference DAO reuse one implementation across entity types. |
 | 7. Collection | `ArrayList`, `List`, `Set` | `main/model/Page.java`; `main/dao/jdbc/JdbcSupport.java` (`queryList`, `search`); `main/dao/jdbc/JdbcBookAuthorDAO.java` (`replaceForBook`) | `ArrayList` makes a defensive copy and accumulates rows; `List` is the return abstraction; `LinkedHashSet` removes duplicate author IDs. |
-| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java`; `test/dao/JdbcBookCopyDAOTest.java`; `test/dao/JdbcLoanDAOTest.java`; `test/dao/TransactionIsolationTest.java` | 43 lambdas exist across the test suite, all passed to JUnit `assertThrows`/`assertDoesNotThrow`; no production lambda was added. |
+| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java`; `test/dao/JdbcBookCopyDAOTest.java`; `test/dao/JdbcLoanDAOTest.java`; `test/dao/TransactionIsolationTest.java`; `test/dao/JdbcDashboardDAOTest.java` | 145 lambdas exist across the 12 test classes, passed to JUnit `assertThrows`, `assertDoesNotThrow`, and 34 `assertAll` groups; no production lambda was added. |
 | 8. GUI | Java GUI is not applicable | `web/WEB-INF/views/books/list.jsp`; `web/WEB-INF/tags/pagination.tag`; `web/assets/js/app.js` | The UI is JSP/JSTL/EL plus vanilla JavaScript; there is no Swing, AWT, or JavaFX. |
 | 9. JDBC | `DriverManager` and `Connection` | `main/config/DatabaseConnection.java`; `test/dao/support/TestDatabase.java`; `main/dao/BookDAO.java` | `DriverManager.getConnection` creates the connection; the caller passes it in; DAOs never commit, roll back, or close it. |
 | 9. JDBC | `PreparedStatement` and `ResultSet` | `main/dao/jdbc/JdbcSupport.java`; `main/dao/jdbc/JdbcBookDAO.java` (`appendSearchFilters`) | SQL uses `?` placeholders, `setObject`/`setInt`/`setString` bind values, and `while (rs.next())` maps rows. |
@@ -142,14 +142,14 @@ If the teacher asks "which part of the code demonstrates the Java concept?", ope
 
 ## Source Pattern Inventory
 
-The tables below record the concrete patterns found in the 40 main and 14 test Java files during the 2026-10-30 inspection. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
+The tables below record the concrete patterns found in the 39 main and 14 test Java files during the 2026-11-01 inspection. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
 
 ### Inventory summary
 
 | Pattern | Observed evidence |
 |---|---|
 | DAO interface / implementation | 9 `public interface ...DAO` contracts and 9 `implements ...DAO` JDBC classes, plus 2 shared JDBC support classes |
-| Enumerations | 4: `CopyStatus`, `LoanState`, `LoanStatus`, `MemberStatus` |
+| Enumerations | 3: `CopyStatus`, `LoanStatus`, `MemberStatus` |
 | Generated keys | 1 `getGeneratedKeys()` call site in `JdbcSupport.insert`, reused by 5 insert implementations |
 | Row-locking SQL | 3 `SELECT ... FOR UPDATE` queries: `JdbcBookCopyDAO.FIND_BY_ID_FOR_UPDATE`, `JdbcLoanDAO.FIND_BY_ID_FOR_UPDATE`, and `JdbcLoanDAO.FIND_ACTIVE_BY_COPY_ID` |
 | Varargs / implicit arrays | 8 `Object...` methods in `JdbcSupport`, `TestDatabase.firstNonBlank(String...)`, and one `Object...` test helper |
@@ -162,13 +162,13 @@ The tables below record the concrete patterns found in the 40 main and 14 test J
 | File(s) | Patterns present |
 |---|---|
 | `config/AppConfig.java` | `final` class, private constructor, `public static final` constants for SQLState values, loan period, and pagination defaults including `MAX_PAGE_SIZE`; no credential fields |
-| `config/DatabaseConnection.java` | Static connection factory; environment-variable precedence (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `DB_CONFIG`); `Properties`; `DriverManager`; file I/O with `Path`, `Files.isReadable`, `FileReader`, and `BufferedReader`; null/blank checks; try-with-resources; `closeQuietly` helper; caller-owned transaction |
+| `config/DatabaseConnection.java` | Static connection factory; environment-variable precedence (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `DB_CONFIG`); `Properties`; `DriverManager`; file I/O with `Path`, `Files.isReadable`, `FileReader`, and `BufferedReader`; null/blank checks; try-with-resources; caller-owned transaction. The unused `closeQuietly` helper was removed |
 | `exception/DataAccessException.java` | Inheritance from `RuntimeException`; overloaded constructors; exception chaining with `super(message, cause)`; `instanceof SQLException`; final `sqlState` field; overridden `getMessage()` |
 | `model/Book.java`, `Author.java`, `Publisher.java`, `Category.java`, `BookCopy.java`, `Member.java`, `Loan.java`, `DashboardStats.java` | Encapsulation with private fields and accessors; default and convenience constructors; `equals`/`hashCode` for identity-bearing models and `toString` for all; composition in `Book.authors`; enum and date fields; DAO-populated display projections |
 | `model/Page.java` | Generic class `Page<T>` and generic `List<T>`; defensive copy with `ArrayList`; unmodifiable list; arithmetic for pages; bean properties `first` and `last`; additional `hasNext()`/`hasPrevious()` methods are not EL bean properties; `Page<?>` in `equals` |
 | `model/criteria/PageCriteria.java` | Abstract shared pagination bean; `Integer page`/`size`; null-safe getters/setters; clamping through `Math.max`/`Math.min`; constants from `AppConfig`; inherited by all three search criteria |
 | `model/criteria/BookSearchCriteria.java`, `MemberSearchCriteria.java`, `LoanSearchCriteria.java` | Extend `PageCriteria`; encapsulated filter beans; nullable filters; `LocalDate` ranges; caller-supplied `today` with a null-safe setter; `toString` |
-| `model/enums/CopyStatus.java`, `LoanState.java`, `LoanStatus.java`, `MemberStatus.java` | Type-safe enum constants mirroring database CHECK constraints; `LoanState` documents a derived UI state that is not stored |
+| `model/enums/CopyStatus.java`, `LoanStatus.java`, `MemberStatus.java` | Type-safe enum constants mirroring database CHECK constraints. Overdue is derived at query/display time, not stored as an enum |
 
 ### DAO contracts
 

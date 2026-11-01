@@ -6,8 +6,9 @@
 | Database | PostgreSQL 16.15 |
 | Schema file | `src/main/resources/db/schema.sql` |
 | Seed file | `src/main/resources/db/seed.sql` |
-| Last updated | 2026-10-27 |
-| Status | Implemented and applied to `library_db` and `library_test` |
+| Last updated | 2026-11-01 |
+| Status | Implemented and applied to `library_db` and `library_test`; schema and seed were not changed by the 2026-11-01 code cleanup or test-suite recombination |
+| Related | `docs/person2-controller-todo.md` lists the Controller/Service rules that consume this schema |
 
 ## 1. Entity-relationship model
 
@@ -151,6 +152,8 @@ Repeat with `-d library_test` for the test database. `schema.sql` and `seed.sql`
 
 ## 10. Verification evidence (2026-10-27)
 
+> **2026-11-01 note:** no schema, seed, constraint, or index change was made during the dead-code cleanup or the test-suite recombination. The DAO suite was re-run against `library_test` on 2026-11-01: 74/74 tests pass. Database design remains as verified below.
+
 - `schema.sql` and `seed.sql` applied successfully to both `library_db` and `library_test`.
 - Both databases contain 8 application tables, 11 named indexes, and 3 inline unique-constraint indexes (`books_isbn_key`, `book_copies_copy_code_key`, `members_member_code_key`).
 - The `unaccent` extension is installed in both databases. On `library_db`, `unaccent('Chí Phèo')` returns `Chi Pheo`, and both `%Chi Pheo%` and `%Chí Phèo%` return `book_id 2` (`Chí Phèo`).
@@ -162,7 +165,7 @@ Repeat with `-d library_test` for the test database. `schema.sql` and `seed.sql`
   - ISBN length 12: rejected; lengths 13 and 20: accepted.
   - Due date `loan_date + 15`: rejected.
   - Second active loan for the same copy: rejected.
-- The standalone DAO suite passes 124/124 tests against `library_test`, including 7 accent-insensitive search tests in `DiacriticSearchTest`.
+- The standalone DAO suite passes 74/74 tests against `library_test`, including 4 accent-insensitive search tests in `DiacriticSearchTest`.
 - The full read-only verification queries and command results are recorded in `docs/runtime-toolchain-audit.md`.
 
 ## 11. Related files

@@ -12,11 +12,17 @@ import com.library.config.AppConfig;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * DAO tests for reference-data mapping and case-insensitive category names.
+ *
+ * <p>This class is the single owner of category/author/publisher DAO behavior. The former
+ * raw-SQL category UPDATE check from {@code DataConsistencyTest} lives here because the
+ * unique index is part of the reference-data contract.
  */
 class JdbcReferenceDAOTest {
 
@@ -36,9 +42,25 @@ class JdbcReferenceDAOTest {
             assertTrue(categoryDao.nameExists(c, "novel", null));
             assertFalse(categoryDao.nameExists(c, "science", null));
 
-            DataAccessException error = assertThrows(DataAccessException.class,
+            DataAccessException insertError = assertThrows(DataAccessException.class,
                     () -> categoryDao.insert(c, new Category(null, "NOVEL")));
-            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, error.getSqlState());
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, insertError.getSqlState());
+
+            Category poetry = new Category(null, "Poetry");
+            categoryDao.insert(c, poetry);
+            Category drama = new Category(null, "Drama");
+            categoryDao.insert(c, drama);
+
+            // JdbcCategoryDAO has no update(); the schema index itself must reject the collision.
+            SQLException updateError = assertThrows(SQLException.class, () -> {
+                try (Statement st = c.createStatement()) {
+                    st.execute("UPDATE categories SET name = 'POETRY' WHERE category_id = "
+                            + drama.getCategoryId());
+                }
+            });
+            assertEquals(AppConfig.SQLSTATE_UNIQUE_VIOLATION, updateError.getSQLState());
+
+            assertFalse(categoryDao.findById(c, 999_999).isPresent());
         }
     }
 

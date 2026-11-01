@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.4 |
-| Date | 2026-10-30 |
-| Status | Person 1 implementation complete and verified with standalone tools; Person 2 build, deployment, and HTTP integration remain blocked |
+| Version | 1.6 |
+| Date | 2026-11-01 |
+| Status | Person 1 implementation complete, cleaned up, and re-verified with standalone tools (39/39 main, 14/14 test, 74/74 tests pass); Person 2 build, deployment, and HTTP integration remain blocked |
 | Person 1 | Database, SQL, JDBC/DAO, UI/UX |
 | Person 2 | Controller, Service/business rules, integration |
 | Supersedes | Initial Phase 1 full-stack plan and the Person 1 scope revision |
@@ -29,16 +29,16 @@ Authentication and role-based authorization are outside the current MVP scope. T
 
 | Item | Status |
 |---|---|
-| Application source code | Person 1 source present: 40 main Java files, 14 test source files (12 test classes plus `TestDatabase` and `TestFixtures`), 15 JSPs plus 1 shared tag, CSS/JS, and SQL scripts |
+| Application source code | Person 1 source present: 39 main Java files, 14 test source files (12 test classes plus `TestDatabase` and `TestFixtures`), 15 JSPs plus 1 shared tag, CSS/JS, and SQL scripts |
 | Shared code | `JdbcSupport`, `AbstractNamedEntityDAO<T>`, `PageCriteria`, `TestFixtures`, and `pagination.tag` remove repeated JDBC, criteria, fixture, and pagination code |
 | Repository contents | `docs/`, `src/main/java`, `src/main/resources/db`, `src/main/webapp`, and `src/test/java`; no Maven build or web deployment descriptors |
-| Git repository | Initialized on `main` with `origin`; feature branch `feature/test-suite-and-vietnamese-search` prepared for PR |
+| Git repository | Initialized on `main` at `b499748` with `origin`; `feature/test-suite-and-vietnamese-search` is fully merged and retained (not deleted) |
 | Java JDK | Temurin JDK `17.0.20.1+1` installed at `C:\Users\BINHND\dev\jdk-17`; `JAVA_HOME` and `PATH` configured |
 | Maven | Maven `3.9.16` installed at `C:\Users\BINHND\dev\apache-maven-3.9.16`; uses JDK 17 |
 | PostgreSQL | PostgreSQL `16.15` installed locally; cluster running on `127.0.0.1:5432`; `library_db` and `library_test` applied and seeded |
 | Tomcat | Tomcat `10.1.61` installed at `C:\Users\BINHND\dev\apache-tomcat-10.1.61`; HTTP and stock JSP verified |
 | PostgreSQL JDBC | `postgresql-42.7.14.jar` downloaded and used by the standalone DAO tests |
-| JUnit | JUnit Platform Console Standalone `1.14.4` used outside the workspace; 124/124 DAO tests pass; Maven/Surefire integration is still missing |
+| JUnit | JUnit Platform Console Standalone `1.14.4` used outside the workspace; 74/74 DAO tests pass (re-run 2026-11-01); Maven/Surefire integration is still missing |
 | Docker | Not installed; not required |
 | Runtime/Servlet namespace decision | **Resolved:** Tomcat 10.1 + Jakarta Servlet 6.0 + JSP 3.1 + JSTL 3.0.1 |
 | Project build | **Not created:** no `pom.xml`, Maven Wrapper, `web.xml`, or `context.xml` |
@@ -50,10 +50,23 @@ Authentication and role-based authorization are outside the current MVP scope. T
 1. Person 2 must create the initial Maven project (`pom.xml`, Maven Wrapper, `web.xml`, `context.xml`) and freeze the Service/Controller contracts.
 2. Person 2 must integrate the existing Person 1 source and JSPs into the Maven WAR and add Jakarta Servlet/JSP/JSTL/pgJDBC/JUnit dependencies.
 3. A project WAR must build, deploy to Tomcat, and pass JSP/HTTP checks.
-4. JUnit 5 and Surefire must be integrated into the project; the current 124/124 result is standalone console evidence, not Maven evidence.
+4. JUnit 5 and Surefire must be integrated into the project; the current 74/74 result is standalone console evidence, not Maven evidence.
 5. The university has not supplied a requirement document confirming the selected runtime; the project owner approved the stable baseline, but course acceptance is not evidenced.
 
 The runtime and toolchain are installed and verified. Person 1's database, DAO, and UI scope is implemented and verified with standalone tools. Phase 2 remains gated on the project build, deployment, and HTTP integration owned by Person 2.
+
+### Recent Person 1 changes (2026-11-01)
+
+| Change | Detail |
+|---|---|
+| Dead code removed | `model/enums/LoanState.java` and `DatabaseConnection.closeQuietly(Connection)` deleted; neither had a caller |
+| Constants centralized | 9 test files now use `AppConfig.SQLSTATE_UNIQUE_VIOLATION`, `SQLSTATE_FOREIGN_KEY_VIOLATION`, and `SQLSTATE_CHECK_VIOLATION` instead of `"23505"`, `"23503"`, and `"23514"`; `TestFixtures.insertActiveLoan` uses `AppConfig.LOAN_PERIOD_DAYS` instead of `plusDays(14)` |
+| Encoding fix | Accidental UTF-8 BOM and double-encoded characters (`â€”`, `Â§`, `â†’`) in 3 test files were repaired so `javac` compiles cleanly and comments read correctly |
+| Re-verification | 39/39 main files, 14/14 test files, 74/74 tests pass, 15/15 JUnit containers successful |
+| Test suite recombination | 124 → 74 test methods by rule ownership: DAO behavior in `Jdbc*DAOTest`, cross-table behavior in `CrossTableSynchronizationTest`, raw-SQL schema invariants in `DataConsistencyTest`; same-rule INSERT/UPDATE and boundary cases merged with `assertAll` without dropping assertions (145 lambdas, 34 `assertAll`) |
+| Person 2 checklist | `docs/person2-controller-todo.md` added with the 8 known Controller/Service gaps |
+
+Commits: `1929e66` (dead-code and constant cleanup) and `b499748` (Person 2 checklist).
 
 `docs/java-concepts-mapping.md` now marks the concepts evidenced by Person 1 source as implemented and keeps Person 2 and Maven-dependent items as planned or partial.
 
@@ -168,7 +181,7 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 | Servlet API | Jakarta Servlet `6.0` | Tomcat runtime contains `jakarta/servlet/http/HttpServlet.class` |
 | JSP/JSTL | JSP `3.1` / JSTL `3.0.1` (`jakarta.tags.*`) | 15 JSPs plus the shared `pagination.tag` compiled with Tomcat `JspC` and temporary JSTL 3.0.1 JARs; WAR dependency pending in project |
 | PostgreSQL JDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar`; local `SELECT 1` passed and DAO tests executed |
-| Tests | JUnit `5.14.4` console standalone | 124/124 DAO tests pass outside Maven; Surefire integration pending |
+| Tests | JUnit `5.14.4` console standalone | 74/74 DAO tests pass outside Maven; Surefire integration pending |
 | Compilation target | `maven.compiler.release=17` | Main and test sources compiled with `javac --release 17`; POM still pending |
 
 ### Verification checklist before Phase 2
@@ -182,9 +195,9 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 | Tomcat `servlet-api.jar` contains Jakarta `HttpServlet` | **PASS** | `jakarta/servlet/http/HttpServlet.class` present |
 | PostgreSQL databases and application role | **PASS** | `library_db`, `library_test`, and `library_app` connection verified |
 | JDBC driver smoke test | **PASS** | Driver `42.7.14`, server `16.15`, `SELECT 1` returned `1` |
-| Main and test source compilation | **PASS** | `javac --release 17 -encoding UTF-8`: 40/40 main files and 14/14 test files compiled |
+| Main and test source compilation | **PASS** | `javac --release 17 -encoding UTF-8`: 39/39 main files and 14/14 test files compiled (re-run 2026-11-01) |
 | Schema, seed, and constraints | **PASS** | Applied to `library_db` and `library_test`; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes; seed counts `3/4/4/4/8/3/3/4` |
-| DAO tests | **PASS (standalone)** | JUnit Platform Console: 124 tests found, 124 successful, 0 failed |
+| DAO tests | **PASS (standalone)** | JUnit Platform Console: 74 tests found, 74 successful, 0 failed |
 | JSP compilation | **PASS (standalone)** | Tomcat `JspC`: 16 generated Java files (15 JSPs + 1 tag), 16 class files, 0 errors |
 | Static EL property check | **PASS** | 320 expressions scanned; 214 model property references checked; no missing property |
 | Manual PK/FK/relation probes | **PASS** | 48 probes (PK, unique, FK insert/update, ON DELETE RESTRICT/CASCADE, active-loan partial unique, CHECK, orphan check) all pass inside a rolled-back transaction on `library_test` |
@@ -350,7 +363,6 @@ library-management-system/
 │   │   │   │   ├── Publisher.java
 │   │   │   │   ├── enums/
 │   │   │   │   │   ├── CopyStatus.java
-│   │   │   │   │   ├── LoanState.java
 │   │   │   │   │   ├── LoanStatus.java
 │   │   │   │   │   └── MemberStatus.java
 │   │   │   │   └── criteria/
@@ -436,7 +448,7 @@ library-management-system/
 │       └── util/
 ```
 
-The tree is the target layout, not a claim that every file exists. Person 1 source, JSPs, tags, SQL, tests, README, `.gitignore`, and the six current docs are present; `pom.xml`, `web.xml`, `context.xml`, Service/Controller/filter files, and the three Person 2 docs remain planned. Ownership follows the matrix in section 4.
+The tree is the target layout, not a claim that every file exists. Person 1 source, JSPs, tags, SQL, tests, README, `.gitignore`, and the eight current `docs/` files are present; `pom.xml`, `web.xml`, `context.xml`, Service/Controller/filter files, and the three Person 2 docs remain planned. Ownership follows the matrix in section 4.
 
 ## 9. Business Function Ownership and Flow
 
@@ -559,7 +571,8 @@ Person 2 must freeze:
 ### 10.3 Models, enums, and behavior
 
 - `Book`, `Member`, `Loan`, `BookCopy`, `Author`, `Publisher`, `Category`, `Page<T>`, `DashboardStats`.
-- Enums: `CopyStatus`, `MemberStatus`, `LoanStatus`, `LoanState`.
+- Enums: `CopyStatus`, `MemberStatus`, `LoanStatus`.
+- Overdue is a derived display value, not an enum and not a stored row status.
 - Searches return empty pages/lists, never `null`.
 - Get-by-id throws `NotFoundException`.
 - Create operations return generated IDs.
@@ -681,7 +694,7 @@ Integration tests use a separate `library_test` database and are gated by test e
 
 ### Status
 
-Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 124 tests found, 124 successful, 0 failed, exit code 0. Main sources compile with `javac --release 17` (40 files), test sources compile (14 files), and all 15 JSPs plus the shared tag compile with Tomcat `JspC` and JSTL 3.0.1 (16 generated files, 0 errors). Additionally, 48 manual PK/FK/relation probes pass inside a rolled-back transaction on `library_test`. These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
+Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 74 tests found, 74 successful, 0 failed, exit code 0 (re-run 2026-11-01 after the suite was recombined by rule ownership). Main sources compile with `javac --release 17` (39 files, 40 class files including the nested `JdbcSupport.RowMapper`), test sources compile (14 files), and all 15 JSPs plus the shared tag compile with Tomcat `JspC` and JSTL 3.0.1 (16 generated files, 0 errors). Additionally, 48 manual PK/FK/relation probes pass inside a rolled-back transaction on `library_test`. These are standalone-tool results, not Maven/Surefire results. No `mvn test`, `mvn package`, WAR deployment, or HTTP flow has been executed because Person 2's build and integration files do not exist.
 
 ## 14. Documentation Plan
 
@@ -696,7 +709,8 @@ Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 1
 | `docs/java-concepts-mapping.md` | Person 1; Person 2 reviews own-code rows | **Updated with source evidence** |
 | `docs/runtime-toolchain-audit.md` | Person 1 | **Updated with implementation evidence** |
 | `docs/person1-implementation-plan.md` | Person 1 | **Implemented; retained as the original work breakdown** |
-| `docs/test-suite-report.md` | Person 1 | **Merged extended DAO test suite; actual-run results recorded** |
+| `docs/person2-controller-todo.md` | Person 2 | **OPEN:** 8 Controller/Service gaps that must be fixed during integration |
+| `docs/test-suite-report.md` | Person 1 | **Recombined 74-test DAO suite; actual-run results recorded** |
 
 ## 15. Phases and Gates
 
@@ -705,7 +719,7 @@ Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 1
 | 0. Runtime/toolchain | Verify DB/JDBC tools; support install | Confirm Tomcat/Servlet target; integration setup | **PASS:** runtime and namespace verified; tools installed. Project build/deployment/test gate remains open. |
 | 1. Inspection/plan | Consolidated plan, ownership, Java concepts doc | Review contracts | Plan approved; no code claims |
 | 2. Schema/contracts | Complete: schema, seed, models, DAO interfaces, DB docs | Service interfaces and endpoint/view contract still pending | Schema applies to both databases; Person 1 contracts are frozen |
-| 3. DAO layer | Complete: JDBC DAOs and 124 passing DAO tests; 48 manual PK/FK/relation probes pass | Services against DAO contracts; transaction logic pending | DAO/constraint tests pass standalone; no Maven/Surefire run |
+| 3. DAO layer | Complete: JDBC DAOs and 74 passing DAO tests; 48 manual PK/FK/relation probes pass | Services against DAO contracts; transaction logic pending | DAO/constraint tests pass standalone; no Maven/Surefire run |
 | 4. UI + controllers | Complete: JSP/CSS/JS and client validation; all 15 JSPs compile | Servlets, services, filters pending | Screens are not wired to real endpoints yet |
 | 5. Integration | Pending end-to-end defects | Own end-to-end integration | All 12 functions still unverified over HTTP |
 | 6. Verification/docs | DB/DAO/UI standalone evidence complete | Service/integration evidence pending | Person 1 scope verified; full Definition of Done not met |
@@ -722,7 +736,7 @@ Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 1
 
 1. **Runtime decision:** resolved in favor of Tomcat 10.1.61/Jakarta. If the university later requires Tomcat 9, the namespace and JSTL choices must be revisited before source is written.
 2. **Project build blocker:** `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, and WAR deployment do not exist yet. Person 2 owns the initial build and integration setup.
-3. **Test integration blocker:** JUnit 5 and Surefire are not integrated. The 124/124 DAO result comes from the standalone JUnit Platform Console and must not be reported as a Maven test result.
+3. **Test integration blocker:** JUnit 5 and Surefire are not integrated. The 74/74 DAO result comes from the standalone JUnit Platform Console and must not be reported as a Maven test result.
 4. **Shared model authorship:** recommended Person 1 authors initial models; Person 2 approves.
 5. **Reference data and copy management:** support screens are optional scope, not part of the 12 functions.
 6. **Shared file ownership:** `pom.xml`, README, API contract, testing doc, and `web.xml` need single writers.
@@ -755,7 +769,7 @@ Person 1 DAO tests exist and pass under the standalone JUnit Platform Console: 1
 Person 1 implementation is complete for the agreed scope. The remaining work belongs to Person 2:
 
 1. Create the initial Maven project: `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, dependencies, and Surefire/JUnit configuration around the existing source tree.
-2. Confirm the DAO/service/endpoint/view contracts and add the Controller, Service, filter, and transaction-boundary code.
+2. Confirm the DAO/service/endpoint/view contracts and add the Controller, Service, filter, and transaction-boundary code. Follow `docs/person2-controller-todo.md` and close every item before claiming integration complete.
 3. Integrate the JSPs, CSS, and JavaScript into the Maven WAR with Jakarta Servlet 6.0, JSP 3.1, JSTL 3.0.1, and pgJDBC 42.7.14.
 4. Run `mvn clean test` and `mvn clean package`, deploy the WAR to Tomcat 10.1.61, and verify all 12 business functions over HTTP.
 5. Re-run the Phase 2 gate in `docs/runtime-toolchain-audit.md` only after the Maven build, deployment, and HTTP evidence exists.
