@@ -6,7 +6,7 @@
 | Audit date | 2026-11-07 |
 | Report version | 3.5 |
 | Auditor scope | Person 1: database, SQL, JDBC/DAO, and UI/UX |
-| Workspace | `C:\Users\BINHND\Desktop\Library-Management-System-main\Library-Management-System-main\library-management-system` |
+| Workspace | `<workspace>` |
 | Audit type | Environment inspection plus Person 1 implementation verification |
 | Changes made | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and documentation were created; the runtime toolchain was previously installed. On 2026-10-30 duplicated JDBC/criteria/test-fixture/JSP-pagination code was refactored into shared helpers. On 2026-11-01 unused `LoanState` and `closeQuietly` were removed, SQLState/loan-period constants were centralized in `AppConfig`, a UTF-8 BOM and mojibake regression in 3 test files was fixed, and the suite was recombined from 124 to 74 tests by rule ownership. On 2026-11-07 the course-level review removed the `IntConsumer` generated-key callback and all method references, converted row mappers to 15 `RowMapper` lambdas, removed `@FunctionalInterface`, changed `List<?>` to `List<Object>`, replaced `java.nio.file` with `java.io.File`, and replaced `String.isBlank()` with `String.trim().isEmpty()`; compilation and all 74 tests were re-run |
 | Person 1 gate | **PASS** for the agreed standalone scope |
@@ -18,12 +18,12 @@
 
 ### Installed and verified
 
-- **Temurin JDK `17.0.20.1+1`** at `C:\Users\BINHND\dev\jdk-17`; `java` and `javac` report `17.0.20.1`.
-- **Apache Maven `3.9.16`** at `C:\Users\BINHND\dev\apache-maven-3.9.16`; `mvn -v` reports Java `17.0.20.1`. Maven was not used to build this project.
-- **Apache Tomcat `10.1.61`** at `C:\Users\BINHND\dev\apache-tomcat-10.1.61`; the Jakarta namespace and stock JSP runtime were previously verified. Tomcat `JspC` was used to compile the project JSPs.
-- **PostgreSQL `16.15`** at `C:\Users\BINHND\dev\pgsql-16.15`; the local cluster runs on `127.0.0.1:5432`.
+- **Temurin JDK `17.0.20.1+1`** at `<toolchain-root>\jdk-17`; `java` and `javac` report `17.0.20.1`.
+- **Apache Maven `3.9.16`** at `<toolchain-root>\apache-maven-3.9.16`; `mvn -v` reports Java `17.0.20.1`. Maven was not used to build this project.
+- **Apache Tomcat `10.1.61`** at `<toolchain-root>\apache-tomcat-10.1.61`; the Jakarta namespace and stock JSP runtime were previously verified. Tomcat `JspC` was used to compile the project JSPs.
+- **PostgreSQL `16.15`** at `<toolchain-root>\pgsql-16.15`; the local cluster runs on `127.0.0.1:5432`.
 - **Databases `library_db` and `library_test`**, both owned by the least-privilege application role `library_app`.
-- **PostgreSQL JDBC `42.7.14`** at `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar`; used by the standalone DAO tests.
+- **PostgreSQL JDBC `42.7.14`** at `<toolchain-root>\lib\postgresql-42.7.14.jar`; used by the standalone DAO tests.
 - **JUnit Platform Console Standalone `1.14.4`** downloaded outside the workspace; used to run the DAO tests.
 - **JSTL 3.0.1 API and implementation JARs**, plus Apache Ant `1.10.15` and Tomcat `juli`, downloaded outside the workspace for `JspC`.
 
@@ -95,11 +95,11 @@ Person 1 verification used actual command execution:
 
 | Component | Installed version | Location | Verification |
 |---|---|---|---|
-| JDK | Temurin `17.0.20.1+1` | `C:\Users\BINHND\dev\jdk-17` | `java -version`; `javac -version`; `javac --release 17` build |
-| Maven | `3.9.16` | `C:\Users\BINHND\dev\apache-maven-3.9.16` | `mvn -v`; not used for the project build |
-| Tomcat | `10.1.61` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61` | `version.bat`; `JspC` compilation |
-| PostgreSQL | `16.15` | `C:\Users\BINHND\dev\pgsql-16.15` | `psql --version`; schema/seed and constraint checks |
-| pgJDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar` | Compiled and executed DAO tests |
+| JDK | Temurin `17.0.20.1+1` | `<toolchain-root>\jdk-17` | `java -version`; `javac -version`; `javac --release 17` build |
+| Maven | `3.9.16` | `<toolchain-root>\apache-maven-3.9.16` | `mvn -v`; not used for the project build |
+| Tomcat | `10.1.61` | `<toolchain-root>\apache-tomcat-10.1.61` | `version.bat`; `JspC` compilation |
+| PostgreSQL | `16.15` | `<toolchain-root>\pgsql-16.15` | `psql --version`; schema/seed and constraint checks |
+| pgJDBC | `42.7.14` | `<toolchain-root>\lib\postgresql-42.7.14.jar` | Compiled and executed DAO tests |
 | JUnit | `5.14.4` console standalone | Outside the workspace | 74/74 DAO tests passed |
 | JSTL | `3.0.1` API + implementation | Outside the workspace | Used by Tomcat `JspC` |
 | Ant | `1.10.15` | Outside the workspace | Required by `JspC` at build time |
@@ -110,10 +110,10 @@ The following values are persisted at **User** scope:
 
 | Variable | Value |
 |---|---|
-| `JAVA_HOME` | `C:\Users\BINHND\dev\jdk-17` |
-| `MAVEN_HOME` | `C:\Users\BINHND\dev\apache-maven-3.9.16` |
-| `CATALINA_HOME` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61` |
-| `PGDATA` | `C:\Users\BINHND\dev\pgdata-library` |
+| `JAVA_HOME` | `<toolchain-root>\jdk-17` |
+| `MAVEN_HOME` | `<toolchain-root>\apache-maven-3.9.16` |
+| `CATALINA_HOME` | `<toolchain-root>\apache-tomcat-10.1.61` |
+| `PGDATA` | `<toolchain-root>\pgdata-library` |
 
 The User `PATH` contains the JDK, Maven, Tomcat, and PostgreSQL `bin` directories. A fresh environment previously verified `java`, `javac`, `mvn`, `psql`, and Tomcat `version.bat`.
 
@@ -123,10 +123,10 @@ Maven reports platform encoding `Cp1252`. Person 2's `pom.xml` must set UTF-8 ex
 
 | Script | Purpose |
 |---|---|
-| `C:\Users\BINHND\dev\scripts\start-postgres.ps1` | Starts PostgreSQL if it is not already ready; exits `0` when ready |
-| `C:\Users\BINHND\dev\scripts\stop-postgres.ps1` | Fast-stops the local cluster |
-| `C:\Users\BINHND\dev\scripts\start-tomcat.cmd` | Starts Tomcat with the installed JDK and `CATALINA_HOME` |
-| `C:\Users\BINHND\dev\scripts\stop-tomcat.cmd` | Gracefully shuts down Tomcat |
+| `<toolchain-root>\scripts\start-postgres.ps1` | Starts PostgreSQL if it is not already ready; exits `0` when ready |
+| `<toolchain-root>\scripts\stop-postgres.ps1` | Fast-stops the local cluster |
+| `<toolchain-root>\scripts\start-tomcat.cmd` | Starts Tomcat with the installed JDK and `CATALINA_HOME` |
+| `<toolchain-root>\scripts\stop-tomcat.cmd` | Gracefully shuts down Tomcat |
 
 ## 4. Verification Evidence
 
@@ -141,7 +141,7 @@ javac 17.0.20.1
 
 Apache Maven 3.9.16
 Java version: 17.0.20.1, vendor: Eclipse Adoptium
-Maven home: C:\Users\BINHND\dev\apache-maven-3.9.16
+Maven home: <toolchain-root>\apache-maven-3.9.16
 Default locale: en_US, platform encoding: Cp1252
 ```
 
@@ -331,11 +331,11 @@ m.status == 'INACTIVE'=false
 
 ### 4.7 Secret hygiene
 
-- Real database passwords are stored only under `C:\Users\BINHND\dev\secrets`, outside the workspace.
-- The directory and password files are restricted to `MY-PC\BINHND`; inherited access was removed.
+- Real database passwords are stored only under `<external-secrets>`, outside the workspace.
+- The directory and password files are restricted to `<machine>\<user>`; inherited access was removed.
 - A workspace scan found no credential value, JDBC URL with an embedded password, `.env` file, `db.properties`, or secret-looking file. The only `DB_PASSWORD=` text is this audit's own prose, not a credential assignment.
 - Password values were never printed in commands, logs, or this report.
-- The workspace is not a Git repository, so no secret can have been committed yet. A `.gitignore` is still required before initialization.
+- The workspace is a Git repository; `.gitignore` excludes environment files, secret-looking files, and the machine-specific diagram render config. No credential value is tracked.
 
 ## 5. Compatibility Matrix
 
@@ -453,7 +453,7 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 
 - **SQL Developer JAR trap:** `jakarta.servlet-api-4.0.2.jar` contains `javax.servlet.*`, and `jakarta.servlet.jakarta.servlet-api.jar` is an empty placeholder. Use Maven coordinates, not IDE JARs.
 - **No course document:** no university assignment, rubric, or Tomcat instruction was found. The selected stack is a project-owner decision.
-- **Non-admin Windows:** the toolchain is installed per-user under `C:\Users\BINHND\dev`; PostgreSQL and Tomcat are not Windows services.
+- **Non-admin Windows:** the toolchain is installed per-user under `<toolchain-root>`; PostgreSQL and Tomcat are not Windows services.
 - **No Docker:** integration tests use the local PostgreSQL cluster, not Testcontainers.
 - **No secrets printed:** password values were never displayed, logged, or written into the workspace.
 

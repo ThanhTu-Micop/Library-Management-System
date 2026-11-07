@@ -17,7 +17,7 @@
 
 | Item | Verified current finding |
 |---|---|
-| Workspace root | `C:\Users\BINHND\Desktop\Library-Management-System-main\Library-Management-System-main\library-management-system` |
+| Workspace root | `<workspace>` |
 | OS | Windows; PowerShell is the primary command shell |
 | Java | Temurin JDK 17.0.20.1+1; sources compile with `javac --release 17 -encoding UTF-8` |
 | Maven | Apache Maven 3.9.16 is installed, but no `pom.xml` or Maven Wrapper exists in the repository |

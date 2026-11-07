@@ -41,7 +41,7 @@ psql -h 127.0.0.1 -p 5432 -U library_app -d library_test -v ON_ERROR_STOP=1 -f s
 psql -h 127.0.0.1 -p 5432 -U library_app -d library_test -v ON_ERROR_STOP=1 -f src/main/resources/db/seed.sql
 ```
 
-Mật khẩu thực không được lưu trong kho lưu chính, chỉ ở bên ngoài workspace (`C:\Users\BINHND\dev\secrets\library_app.password`).
+Mật khẩu thực không được lưu trong kho lưu chính, chỉ ở bên ngoài workspace (`<external-secrets>\library_app.password`).
 
 `schema.sql` tự chạy `CREATE EXTENSION IF NOT EXISTS unaccent;`. Extension này đi kèm PostgreSQL (`postgresql-contrib`) và đã được kiểm tra là cài được bằng vai trò `library_app`. Nếu áp dụng lên database đã tồn tại mà không chạy lại toàn bộ schema, hãy chạy riêng:
 

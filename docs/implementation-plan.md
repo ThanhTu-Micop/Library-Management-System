@@ -33,10 +33,10 @@ Authentication and role-based authorization are outside the current MVP scope. T
 | Shared code | `JdbcSupport`, `AbstractNamedEntityDAO<T>`, `PageCriteria`, `TestFixtures`, and `pagination.tag` remove repeated JDBC, criteria, fixture, and pagination code |
 | Repository contents | `docs/`, `src/main/java`, `src/main/resources/db`, `src/main/webapp`, and `src/test/java`; no Maven build or web deployment descriptors |
 | Git repository | Initialized on `main` at `b499748` with `origin`; `feature/test-suite-and-vietnamese-search` is fully merged and retained (not deleted) |
-| Java JDK | Temurin JDK `17.0.20.1+1` installed at `C:\Users\BINHND\dev\jdk-17`; `JAVA_HOME` and `PATH` configured |
-| Maven | Maven `3.9.16` installed at `C:\Users\BINHND\dev\apache-maven-3.9.16`; uses JDK 17 |
+| Java JDK | Temurin JDK `17.0.20.1+1` installed at `<toolchain-root>\jdk-17`; `JAVA_HOME` and `PATH` configured |
+| Maven | Maven `3.9.16` installed at `<toolchain-root>\apache-maven-3.9.16`; uses JDK 17 |
 | PostgreSQL | PostgreSQL `16.15` installed locally; cluster running on `127.0.0.1:5432`; `library_db` and `library_test` applied and seeded |
-| Tomcat | Tomcat `10.1.61` installed at `C:\Users\BINHND\dev\apache-tomcat-10.1.61`; HTTP and stock JSP verified |
+| Tomcat | Tomcat `10.1.61` installed at `<toolchain-root>\apache-tomcat-10.1.61`; HTTP and stock JSP verified |
 | PostgreSQL JDBC | `postgresql-42.7.14.jar` downloaded and used by the standalone DAO tests |
 | JUnit | JUnit Platform Console Standalone `1.14.4` used outside the workspace; 74/74 DAO tests pass (re-run 2026-11-07); Maven/Surefire integration is still missing |
 | Docker | Not installed; not required |
@@ -182,13 +182,13 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 
 | Component | Selected version | Installed path / status |
 |---|---|---|
-| Java | Temurin JDK `17.0.20.1+1` (Java 17 LTS) | `C:\Users\BINHND\dev\jdk-17`; verified |
-| Maven | `3.9.16` | `C:\Users\BINHND\dev\apache-maven-3.9.16`; verified |
-| PostgreSQL | `16.15` | `C:\Users\BINHND\dev\pgsql-16.15`; local cluster verified |
-| Tomcat | `10.1.61` | `C:\Users\BINHND\dev\apache-tomcat-10.1.61`; HTTP/JSP verified |
+| Java | Temurin JDK `17.0.20.1+1` (Java 17 LTS) | `<toolchain-root>\jdk-17`; verified |
+| Maven | `3.9.16` | `<toolchain-root>\apache-maven-3.9.16`; verified |
+| PostgreSQL | `16.15` | `<toolchain-root>\pgsql-16.15`; local cluster verified |
+| Tomcat | `10.1.61` | `<toolchain-root>\apache-tomcat-10.1.61`; HTTP/JSP verified |
 | Servlet API | Jakarta Servlet `6.0` | Tomcat runtime contains `jakarta/servlet/http/HttpServlet.class` |
 | JSP/JSTL | JSP `3.1` / JSTL `3.0.1` (`jakarta.tags.*`) | 15 JSPs plus the shared `pagination.tag` compiled with Tomcat `JspC` and temporary JSTL 3.0.1 JARs; WAR dependency pending in project |
-| PostgreSQL JDBC | `42.7.14` | `C:\Users\BINHND\dev\lib\postgresql-42.7.14.jar`; local `SELECT 1` passed and DAO tests executed |
+| PostgreSQL JDBC | `42.7.14` | `<toolchain-root>\lib\postgresql-42.7.14.jar`; local `SELECT 1` passed and DAO tests executed |
 | Tests | JUnit `5.14.4` console standalone | 74/74 DAO tests pass outside Maven; Surefire integration pending |
 | Compilation target | `maven.compiler.release=17` | Main and test sources compiled with `javac --release 17`; POM still pending |
 
@@ -224,8 +224,8 @@ The project owner approved the stable baseline on 2026-10-24. No university requ
 - `DatabaseConnection` is Person 1-owned; Person 2 owns transaction boundaries.
 - Local development target: `jdbc:postgresql://127.0.0.1:5432/library_db`, user `library_app`.
 - Test target: `library_test` on the same local cluster.
-- Local passwords are stored only under `C:\Users\BINHND\dev\secrets` with restricted ACLs, outside the workspace. They must never be copied into the repository, documentation, scripts, or chat.
-- PostgreSQL is a portable, user-scope cluster, not a Windows service. It is started at user logon by the `LibraryManagementPostgres` scheduled task and can be started or stopped with `C:\Users\BINHND\dev\scripts\start-postgres.ps1` and `stop-postgres.ps1`.
+- Local passwords are stored only under `<external-secrets>` with restricted ACLs, outside the workspace. They must never be copied into the repository, documentation, scripts, or chat.
+- PostgreSQL is a portable, user-scope cluster, not a Windows service. It is started at user logon by the `LibraryManagementPostgres` scheduled task and can be started or stopped with `<toolchain-root>\scripts\start-postgres.ps1` and `stop-postgres.ps1`.
 
 ## 6. Architecture
 
