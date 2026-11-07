@@ -5,7 +5,7 @@ Library Management System — đồ án phân chia làm 2 người:
 - **Person 1:** PostgreSQL database, SQL, DAO/JDBC, DAO tests, JSP/UI, CSS/JS, docs.
 - **Person 2:** Service, business logic, Controller/Servlet, build (`pom.xml`), WAR, deployment, HTTP integration.
 
-> Trạng thái hiện tại (cập nhật 2026-11-01): Person 1 scope đã hoàn thiện, đã dọn dead code, gom hằng số dùng chung và tái tổ hợp bộ test theo ownership, rồi kiểm chứng lại bằng công cụ độc lập — **39/39 main + 14/14 test biên dịch, 74/74 test pass**. Vẫn **chưa có Maven/WAR/Tomcat deployment**; build, deployment và HTTP còn chờ Person 2 (xem mục 6 Known gaps và `docs/person2-controller-todo.md`).
+> Trạng thái hiện tại (cập nhật 2026-11-07): Person 1 scope đã hoàn thiện, đã dọn dead code, gom hằng số dùng chung, tái tổ hợp bộ test theo ownership và rà soát mức kiến thức Java, rồi kiểm chứng lại bằng công cụ độc lập — **39/39 main + 14/14 test biên dịch, 74/74 test pass**. Vẫn **chưa có Maven/WAR/Tomcat deployment**; build, deployment và HTTP còn chờ Person 2 (xem mục 6 Known gaps và `docs/person2-controller-todo.md`).
 
 ## 1. Cấu trúc dự án
 
@@ -18,7 +18,8 @@ src/main/webapp/WEB-INF/tags/pagination.tag
 src/main/webapp/assets/{css,js}
 src/test/java/com/library/{dao,dao/support}
 scripts/{run-tests.ps1,run-tests.sh,with-postgres.ps1}
-docs/{database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,person2-controller-todo,test-suite-report}.md
+docs/{class-design,database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,person2-controller-todo,test-suite-report}.md
+docs/diagrams/{figure-2a-domain-model,figure-2b-dao-layer}.{mmd,png}
 ```
 
 ## 2. Cơ sở dữ liệu (Person 1)
@@ -88,7 +89,7 @@ Kết quả lần kiểm chứng gần nhất (2026-11-01): **39/39 main** (40 c
 java -jar junit-platform-console-standalone-1.14.4.jar execute -cp "<main-out>;<test-out>;postgresql-42.7.14.jar" --scan-classpath <test-out> --disable-banner
 ```
 
-Kết quả chạy lại ngày **2026-11-01**: **74/74 test thành công** trên **12 class test**, 0 thất bại, 0 skipped, 15/15 container OK. Bộ test đã được tái tổ hợp từ 124 test cũ: mỗi rule có một class sở hữu, các boundary cùng rule gộp bằng `assertAll`, không mất assertion nào. Đây là kết quả standalone JUnit, không phải Maven/Surefire. Chi tiết ma trận test nằm trong `docs/test-suite-report.md`.
+Kết quả chạy lại ngày **2026-11-07**: **74/74 test thành công** trên **12 class test**, 0 thất bại, 0 skipped, 15/15 container OK. Bộ test đã được tái tổ hợp từ 124 test cũ: mỗi rule có một class sở hữu, các boundary cùng rule gộp bằng `assertAll`, không mất assertion nào. Đây là kết quả standalone JUnit, không phải Maven/Surefire. Chi tiết ma trận test nằm trong `docs/test-suite-report.md`.
 
 ### 3.3 Kiểm tra thủ công PK/FK/quan hệ (48 probe)
 
@@ -170,7 +171,15 @@ Các commit tương ứng: `1929e66` (dọn dead code + hằng số) và `b49974
 - Gộp insert/update của cùng natural key và các boundary cùng rule bằng `assertAll`; giữ nguyên mọi assertion.
 - Kết quả: **124 → 74 test method** trên 12 class test; **145 lambda** và **34 `assertAll`** trong test source.
 - Chạy lại thực tế: **39/39 main + 14/14 test biên dịch, 74/74 test pass, 0 skipped, 15/15 container OK**.
-- Thay đổi tái tổ hợp hiện nằm trong working tree (chưa commit).
+- Thay đổi tái tổ hợp đã được commit tại `e39da9b`.
+
+### 3.9 Rà soát mức kiến thức Java (2026-11-07)
+
+- Bỏ `IntConsumer` + lambda setter trong `JdbcSupport.insert`; helper trả về generated ID, DAO tự gán ID và trả `1`.
+- Chuyển 19 method reference thành 15 lambda `rs -> mapX(rs)`; bỏ `@FunctionalInterface`.
+- `List<?>` → `List<Object>`; `java.nio.file` → `java.io.File`; `String.isBlank()` → `String.trim().isEmpty()`.
+- Giữ `Page<T>`, `AbstractNamedEntityDAO<T>`, `Optional<T>`, `Page<?>` vì thuộc topic generics hoặc là design choice; chi tiết ở `docs/java-concepts-mapping.md`.
+- Chạy lại: **39/39 main, 14/14 test, 74/74 test pass, 15/15 container**.
 
 ## 4. Giao diện (Person 1)
 
@@ -209,6 +218,7 @@ Tất cả JSP và tag dùng chung đã biên dịch bằng Tomcat `JspC` (16 fi
 
 ## 7. Tài liệu liên quan
 
+- `docs/class-design.md` — báo cáo mục III–VI: class diagram, bảng class/abstract class, overloading/overriding/inheritance, 3-tier, package và interface design.
 - `docs/database-design.md` — ERD, bảng, ràng buộc, invariant, indexes, seed, SQLState mapping.
 - `docs/runtime-toolchain-audit.md` — môi trường, công cụ, bằng chứng kiểm chứng độc lập.
 - `docs/java-concepts-mapping.md` — ánh xạ khái niệm Java với mã nguồn (`file:dòng`) và chỉ dẫn trả lời khi dạy hỏi.

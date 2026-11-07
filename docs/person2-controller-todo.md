@@ -5,19 +5,21 @@
 | Status | OPEN |
 | Owner | Person 2 (Controller, Service, transaction, build, HTTP integration) |
 | Created | 2026-11-01 |
-| Last updated | 2026-11-01 |
+| Last updated | 2026-11-07 |
 | Related | `docs/phase1-plan.md`, `docs/implementation-plan.md` |
 
 > This checklist is a condition for Person 2's Controller/Service work. The DAO layer is
 > implemented and tested; the gaps below are in the missing Controller/Service path or in
 > display fields that the DAO deliberately does not populate.
 
-## Current Person 1 baseline (2026-11-01)
+## Current Person 1 baseline (2026-11-07)
 
 | Item | State |
 |---|---|
 | Compilation | 39/39 main Java files, 14/14 test files, 40 main class files |
-| Tests | 74/74 pass across 12 test classes, 0 skipped, 15/15 JUnit containers successful |
+| Tests | 74/74 pass across 12 test classes, 0 skipped, 15/15 JUnit containers successful (2026-11-07 re-run) |
+| DAO API | Unchanged by the course-level review: `findById` still returns `Optional<T>`, and `insert` still returns the affected-row count (`1`) while writing the generated ID into the model |
+| Production Java style | 15 `RowMapper` lambdas, 0 method references, 0 `java.util.function` imports; `List<?>` replaced by `List<Object>` |
 | Build | Still no `pom.xml`, Maven Wrapper, `web.xml`, or `context.xml` (Person 2) |
 | Dead code | `LoanState` and `DatabaseConnection.closeQuietly` have been removed; do not reference them |
 | Constants available | `AppConfig.SQLSTATE_UNIQUE_VIOLATION`, `SQLSTATE_FOREIGN_KEY_VIOLATION`, `SQLSTATE_CHECK_VIOLATION`, `LOAN_PERIOD_DAYS`, `DEFAULT_PAGE`, `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` |
@@ -73,7 +75,7 @@
 - [ ] Preferred fix: if the id is `null`, use identity (`this == o`); otherwise
   compare the id.
 - [ ] Add a test proving two unsaved entities are not equal.
-- [ ] This is still **unfixed** in the current baseline; do not assume it was changed by the 2026-11-01 cleanup.
+- [ ] This is still **unfixed** in the current baseline; do not assume it was changed by the 2026-11-01 cleanup or the 2026-11-07 course-level review.
 
 ## 6. CSRF
 
@@ -133,3 +135,4 @@
 | 2026-11-01 | Created with 8 gap groups and acceptance criteria (commit `b499748`) |
 | 2026-11-01 | Added the current Person 1 baseline, the removed-code notice, and the explicit note that `equals`/`hashCode` and `today` are still unfixed. The baseline at creation was 124/124 tests |
 | 2026-11-01 | Recombined the DAO suite from 124 to 74 methods by rule ownership without dropping assertions; the current baseline is 39/39 main, 14/14 test, 74/74 tests pass |
+| 2026-11-07 | Applied the course-level review. The DAO interfaces are unchanged, so Person 2's service/controller contracts do not need to change. Production now uses 15 `RowMapper` lambdas and no method references; `JdbcSupport.insert` returns the generated ID, and each DAO still returns `1` from `insert` |

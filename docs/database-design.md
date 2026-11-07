@@ -6,8 +6,8 @@
 | Database | PostgreSQL 16.15 |
 | Schema file | `src/main/resources/db/schema.sql` |
 | Seed file | `src/main/resources/db/seed.sql` |
-| Last updated | 2026-11-01 |
-| Status | Implemented and applied to `library_db` and `library_test`; schema and seed were not changed by the 2026-11-01 code cleanup or test-suite recombination |
+| Last updated | 2026-11-07 |
+| Status | Implemented and applied to `library_db` and `library_test`; schema and seed were not changed by the 2026-11-01 code cleanup, the test-suite recombination, or the 2026-11-07 course-level review |
 | Related | `docs/person2-controller-todo.md` lists the Controller/Service rules that consume this schema |
 
 ## 1. Entity-relationship model
@@ -152,7 +152,7 @@ Repeat with `-d library_test` for the test database. `schema.sql` and `seed.sql`
 
 ## 10. Verification evidence (2026-10-27)
 
-> **2026-11-01 note:** no schema, seed, constraint, or index change was made during the dead-code cleanup or the test-suite recombination. The DAO suite was re-run against `library_test` on 2026-11-01: 74/74 tests pass. Database design remains as verified below.
+> **2026-11-07 note:** no schema, seed, constraint, or index change was made during the dead-code cleanup, the test-suite recombination, or the course-level review. The DAO suite was re-run against `library_test` on 2026-11-07: 74/74 tests pass. Database design remains as verified below.
 
 - `schema.sql` and `seed.sql` applied successfully to both `library_db` and `library_test`.
 - Both databases contain 8 application tables, 11 named indexes, and 3 inline unique-constraint indexes (`books_isbn_key`, `book_copies_copy_code_key`, `members_member_code_key`).

@@ -11,7 +11,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.IntConsumer;
 
 /**
  * Shared JDBC mechanics used by the handwritten DAO implementations.
@@ -26,8 +25,7 @@ final class JdbcSupport {
     private JdbcSupport() {
     }
 
-    /** Maps one result-set row to a domain object. */
-    @FunctionalInterface
+    /** Maps one result-set row to a domain object; implemented with a lambda. */
     interface RowMapper<T> {
         T map(ResultSet rs) throws SQLException;
     }
@@ -58,7 +56,7 @@ final class JdbcSupport {
         }
     }
 
-    static void fillParams(PreparedStatement ps, List<?> params) throws SQLException {
+    static void fillParams(PreparedStatement ps, List<Object> params) throws SQLException {
         for (int i = 0; i < params.size(); i++) {
             ps.setObject(i + 1, params.get(i));
         }
@@ -141,10 +139,11 @@ final class JdbcSupport {
     }
 
     /**
-     * Executes an insert with generated keys and writes the generated ID back to the model.
+     * Executes an insert with generated keys and returns the generated ID.
+     *
+     * <p>The caller writes the ID back to the model and returns the affected-row count.
      */
-    static int insert(Connection c, String sql, String errorMessage, IntConsumer idSetter,
-                      Object... params) {
+    static int insert(Connection c, String sql, String errorMessage, Object... params) {
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             fillParams(ps, params);
             int affected = ps.executeUpdate();
@@ -155,9 +154,8 @@ final class JdbcSupport {
                 if (!keys.next()) {
                     throw new DataAccessException(errorMessage + ": no generated key");
                 }
-                idSetter.accept(keys.getInt(1));
+                return keys.getInt(1);
             }
-            return affected;
         } catch (SQLException e) {
             throw new DataAccessException(errorMessage, e);
         }

@@ -1,0 +1,157 @@
+classDiagram
+    direction LR
+
+    class BookDAO {
+        <<interface>>
+        +findById(Connection, int) Optional~Book~
+        +search(Connection, BookSearchCriteria) Page~Book~
+        +insert(Connection, Book) int
+        +update(Connection, Book) void
+        +delete(Connection, int) void
+        +isbnExists(Connection, String, Integer) boolean
+    }
+
+    class MemberDAO {
+        <<interface>>
+        +findById(Connection, int) Optional~Member~
+        +search(Connection, MemberSearchCriteria) Page~Member~
+        +findAllActive(Connection) List~Member~
+        +insert(Connection, Member) int
+        +update(Connection, Member) void
+        +memberCodeExists(Connection, String, Integer) boolean
+        +emailExists(Connection, String, Integer) boolean
+    }
+
+    class LoanDAO {
+        <<interface>>
+        +insert(Connection, Loan) int
+        +findByIdForUpdate(Connection, int) Optional~Loan~
+        +findActiveByCopyId(Connection, int) Optional~Loan~
+        +markReturned(Connection, int, LocalDate) int
+        +search(Connection, LoanSearchCriteria) Page~Loan~
+        +findActive(Connection) List~Loan~
+        +existsByBookId(Connection, int) boolean
+        +countActive(Connection) long
+        +countOverdue(Connection, LocalDate) long
+    }
+
+    class BookCopyDAO {
+        <<interface>>
+        +findByBookId(Connection, int) List~BookCopy~
+        +findByIdForUpdate(Connection, int) Optional~BookCopy~
+        +insert(Connection, BookCopy) int
+        +updateStatus(Connection, int, CopyStatus) int
+        +deleteByBookId(Connection, int) void
+        +findAvailableWithBook(Connection) List~BookCopy~
+    }
+
+    class BookAuthorDAO {
+        <<interface>>
+        +findByBookId(Connection, int) List~Author~
+        +replaceForBook(Connection, int, List~Integer~) void
+        +deleteByBookId(Connection, int) void
+    }
+
+    class AuthorDAO {
+        <<interface>>
+        +findById(Connection, int) Optional~Author~
+        +search(Connection, BookSearchCriteria) Page~Author~
+        +insert(Connection, Author) int
+        +update(Connection, Author) void
+        +delete(Connection, int) void
+        +nameExists(Connection, String, Integer) boolean
+    }
+    class CategoryDAO {
+        <<interface>>
+        +findById(Connection, int) Optional~Category~
+        +search(Connection, BookSearchCriteria) Page~Category~
+        +insert(Connection, Category) int
+        +update(Connection, Category) void
+        +delete(Connection, int) void
+        +nameExists(Connection, String, Integer) boolean
+    }
+    class PublisherDAO {
+        <<interface>>
+        +findById(Connection, int) Optional~Publisher~
+        +search(Connection, BookSearchCriteria) Page~Publisher~
+        +insert(Connection, Publisher) int
+        +update(Connection, Publisher) void
+        +delete(Connection, int) void
+        +nameExists(Connection, String, Integer) boolean
+    }
+    class DashboardDAO {
+        <<interface>>
+        +getStats(Connection, LocalDate) DashboardStats
+    }
+
+    class AbstractNamedEntityDAO~T~ {
+        <<abstract>>
+        #mapRow(ResultSet) T
+        #setId(T, int) void
+        #getId(T) int
+        #getName(T) String
+        +findById(Connection, int) Optional~T~
+        +search(Connection, BookSearchCriteria) Page~T~
+        +insert(Connection, T) int
+        +update(Connection, T) void
+        +delete(Connection, int) void
+        +nameExists(Connection, String, Integer) boolean
+    }
+
+    class JdbcBookDAO
+    class JdbcMemberDAO
+    class JdbcLoanDAO
+    class JdbcBookCopyDAO
+    class JdbcBookAuthorDAO
+    class JdbcDashboardDAO
+    class JdbcAuthorDAO
+    class JdbcCategoryDAO
+    class JdbcPublisherDAO
+
+    class JdbcSupport {
+        <<utility>>
+        ~likePattern(String)$ String
+        ~fillParams(PreparedStatement, Object[])$
+        ~fillParams(PreparedStatement, List~Object~)$
+        ~queryOne(Connection, String, String, RowMapper, Object[])$ Optional~T~
+        ~queryList(Connection, String, String, RowMapper, Object[])$ List~T~
+        ~queryLong(Connection, String, String, Object[])$ long
+        ~exists(Connection, String, String, Object[])$ boolean
+        ~update(Connection, String, String, Object[])$ int
+        ~updateExpectingRow(Connection, String, String, Object[])$ void
+        ~insert(Connection, String, String, Object[])$ int
+        ~search(Connection, String, String, List~Object~, int, int, int, String, RowMapper)$ Page~T~
+    }
+
+    class RowMapper~T~ {
+        <<interface>>
+        +map(ResultSet) T
+    }
+
+    class DataAccessException {
+        -String sqlState
+        +getSqlState() String
+        +getMessage() String
+    }
+
+    BookDAO <|.. JdbcBookDAO
+    MemberDAO <|.. JdbcMemberDAO
+    LoanDAO <|.. JdbcLoanDAO
+    BookCopyDAO <|.. JdbcBookCopyDAO
+    BookAuthorDAO <|.. JdbcBookAuthorDAO
+    DashboardDAO <|.. JdbcDashboardDAO
+    AuthorDAO <|.. JdbcAuthorDAO
+    CategoryDAO <|.. JdbcCategoryDAO
+    PublisherDAO <|.. JdbcPublisherDAO
+
+    AbstractNamedEntityDAO~T~ <|-- JdbcAuthorDAO
+    AbstractNamedEntityDAO~T~ <|-- JdbcCategoryDAO
+    AbstractNamedEntityDAO~T~ <|-- JdbcPublisherDAO
+
+    JdbcBookDAO ..> JdbcSupport : delegates
+    AbstractNamedEntityDAO~T~ ..> JdbcSupport : uses
+
+    JdbcDashboardDAO --> LoanDAO : composes
+    JdbcSupport ..> RowMapper~T~ : accepts
+    JdbcSupport ..> DataAccessException : throws
+    DataAccessException --|> RuntimeException

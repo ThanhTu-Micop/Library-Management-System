@@ -1,11 +1,9 @@
 package com.library.config;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -54,13 +52,13 @@ public final class DatabaseConnection {
         String user = System.getenv(ENV_USER);
         String password = System.getenv(ENV_PASSWORD);
 
-        if (url == null || url.isBlank()) {
+        if (url == null || url.trim().isEmpty()) {
             url = DEFAULT_URL;
         }
-        if (user == null || user.isBlank()) {
+        if (user == null || user.trim().isEmpty()) {
             user = DEFAULT_USER;
         }
-        if (password == null || password.isBlank()) {
+        if (password == null || password.trim().isEmpty()) {
             password = loadExternalPassword();
         }
 
@@ -80,14 +78,14 @@ public final class DatabaseConnection {
      */
     private static String loadExternalPassword() {
         String configPath = System.getenv(ENV_CONFIG);
-        if (configPath == null || configPath.isBlank()) {
+        if (configPath == null || configPath.trim().isEmpty()) {
             return null;
         }
-        Path path = Paths.get(configPath);
-        if (!Files.isReadable(path)) {
+        File file = new File(configPath);
+        if (!file.canRead()) {
             return null;
         }
-        try (BufferedReader reader = new BufferedReader(new FileReader(path.toFile()))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line = reader.readLine();
             return line != null ? line.trim() : null;
         } catch (IOException e) {

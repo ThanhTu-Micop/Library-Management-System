@@ -2,14 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Version | 2.2 |
-| Date | 2026-11-01 |
-| Status | Phase 1 plan extended with a verified code-level mapping. Person 1 layers are implemented, dead code was removed, constants were centralized, and the suite was recombined and re-verified (39/39 main, 14/14 test, 74/74 tests pass). Person 2 controller, service, build, and HTTP layers are still missing. 0 of 12 functions are complete end to end. |
+| Version | 2.3 |
+| Date | 2026-11-07 |
+| Status | Phase 1 plan extended with a verified code-level mapping. Person 1 layers are implemented, dead code was removed, constants were centralized, the suite was recombined, and the 2026-11-07 course-level review was applied and re-verified (39/39 main, 14/14 test, 74/74 tests pass). Person 2 controller, service, build, and HTTP layers are still missing. 0 of 12 functions are complete end to end. |
 | Person 1 owner | PostgreSQL design, SQL/constraints, DAO/JDBC, models used by those layers, UI/UX |
 | Person 2 owner | Controller/Servlet, Service/business logic, application integration, Maven/WAR/deployment |
 | Technical baseline | Java 17, PostgreSQL 16.15, JDBC with handwritten SQL, MVC/3-tier, no ORM, no Spring Boot in controller/database layers |
 | Source of truth | The current workspace; every path and method below was checked against it |
-| Documentation scope | Documentation and test-source update. No production application source code was modified. |
+| Documentation scope | Documentation, test-source, and 2026-11-07 production-code review update. |
 
 > **Document evolution note.** The original Phase 1 plan was written before implementation and described a Linux sandbox, JDK 21, PostgreSQL 17, and an unresolved Tomcat blocker. Those environment findings have been reconciled with the current Windows workspace. The architectural decisions, ERD shape, transaction rules, and the names/order of all 12 functions are preserved. Where the implemented schema uses a different label or stronger constraint than the original draft, the implemented source is recorded and the change is called out.
 
@@ -31,7 +31,7 @@
 | SQL source | 3 files: `schema.sql`, `seed.sql`, `manual-relation-test.sql` |
 | Build/deployment descriptors | `pom.xml`, `web.xml`, and `context.xml` are **not present** |
 | Controller/Service source | No `controller` or `service` package and no Servlet/Service class exists |
-| DAO test result | 74/74 tests pass in the 2026-11-01 standalone re-run, 15/15 containers successful, 0 failures |
+| DAO test result | 74/74 tests pass in the 2026-11-07 standalone re-run, 15/15 containers successful, 0 failures |
 | JSP compile result | Tomcat `JspC`: 16 generated Java/class files from 15 JSPs + 1 tag, 0 errors |
 | Authentication/RBAC | Outside MVP scope; not implemented and not claimed |
 
@@ -720,7 +720,7 @@ All DAO methods take a caller-owned `Connection`; the interface documentation ex
 
 | File path | Package | Class | Main responsibility | Important methods | Dependencies / notes | Status |
 |---|---|---|---|---|---|---|
-| `src/main/java/com/library/dao/jdbc/JdbcSupport.java` | `com.library.dao.jdbc` | `JdbcSupport` (package-private final) | Shared JDBC mechanics: binding, LIKE escaping, reads, counts, generated keys, updates, count+data pagination | `likePattern`, `fillParams(PreparedStatement, Object...)`, `fillParams(PreparedStatement, List<?>)`, `queryOne`, `queryList`, `queryLong`, `exists`, `update`, `updateExpectingRow`, `insert`, `search`; nested `RowMapper<T>` | `PreparedStatement`, `ResultSet`, `Statement.RETURN_GENERATED_KEYS`, `getGeneratedKeys()`, `DataAccessException`, `Page<T>` | IMPLEMENTED |
+| `src/main/java/com/library/dao/jdbc/JdbcSupport.java` | `com.library.dao.jdbc` | `JdbcSupport` (package-private final) | Shared JDBC mechanics: binding, LIKE escaping, reads, counts, generated keys, updates, count+data pagination | `likePattern`, `fillParams(PreparedStatement, Object...)`, `fillParams(PreparedStatement, List<Object>)`, `queryOne`, `queryList`, `queryLong`, `exists`, `update`, `updateExpectingRow`, `insert`, `search`; nested `RowMapper<T>` | `PreparedStatement`, `ResultSet`, `Statement.RETURN_GENERATED_KEYS`, `getGeneratedKeys()`, `DataAccessException`, `Page<T>` | IMPLEMENTED |
 | `src/main/java/com/library/dao/jdbc/AbstractNamedEntityDAO.java` | `com.library.dao.jdbc` | `AbstractNamedEntityDAO<T>` (package-private abstract) | Shared CRUD/search/name check for `(id, name, created_at)` reference tables | `findById`, `search(BookSearchCriteria)`, `insert`, `update`, `delete`, `nameExists`; abstract `mapRow`, `setId`, `getId`, `getName` | `JdbcSupport`, `BookSearchCriteria`, `Page<T>` | IMPLEMENTED |
 | `src/main/java/com/library/dao/jdbc/JdbcAuthorDAO.java` | `com.library.dao.jdbc` | `JdbcAuthorDAO` | Author table metadata and mapping | Inherited CRUD/search/name check; `mapRow`, `setId`, `getId`, `getName` | `AbstractNamedEntityDAO<Author>`, `AuthorDAO`, `ResultSet` | IMPLEMENTED |
 | `src/main/java/com/library/dao/jdbc/JdbcCategoryDAO.java` | `com.library.dao.jdbc` | `JdbcCategoryDAO` | Category table with case-insensitive name uniqueness | Inherited CRUD/search/name check; `mapRow`, `setId`, `getId`, `getName` | `AbstractNamedEntityDAO<Category>`, `CategoryDAO` | IMPLEMENTED |
@@ -827,7 +827,7 @@ Person 1 must not be credited with controller, service, transaction orchestratio
 | Models, criteria, enums | IMPLEMENTED | 16 model/criteria/enum source files |
 | DAO interfaces | IMPLEMENTED | 9 interfaces under `com.library.dao` |
 | JDBC DAOs and shared helpers | IMPLEMENTED | 11 implementation/support classes under `com.library.dao.jdbc` |
-| DAO tests | IMPLEMENTED | 12 test classes; 74/74 pass in the 2026-11-01 standalone re-run |
+| DAO tests | IMPLEMENTED | 12 test classes; 74/74 pass in the 2026-11-07 standalone re-run |
 | JSP/CSS/JS | IMPLEMENTED | 15 JSPs + 1 tag, CSS/JS; JspC 16/16 with 0 errors |
 | Controller/Servlet | MISSING | No `controller` package or Servlet class |
 | Service/business logic | MISSING | No `service` package or Service class |
@@ -901,7 +901,9 @@ Person 1 must not be credited with controller, service, transaction orchestratio
 | Version 2.0 (2026-10-31) | Workspace/toolchain findings reconciled; technical decisions preserved; Tomcat blocker marked resolved; phase gate updated; ERD reconciled with `schema.sql`; actual directory tree added; transaction/connection design retained and status-qualified; 12-function mapping extended with UI/Controller/Service/DAO/Model/Database details and data flows; class/method reference added; Person ownership mapping added; implementation status summary added; validation/change report added |
 | Version 2.1 (2026-11-01) | Removed stale `LoanState` and `closeQuietly` references after commit `1929e66`; updated source counts from 40 to 39 main Java files (74 total application/UI/SQL files); recorded re-verification (39/39 main, 14/14 test, 124/124 tests pass at that point) and the Person 2 checklist in `docs/person2-controller-todo.md` |
 | Version 2.2 (2026-11-01) | Recombined the test suite from 124 to 74 methods by rule ownership without dropping assertions (DAO behavior in `Jdbc*DAOTest`, cross-table in `CrossTableSynchronizationTest`, raw-SQL invariants in `DataConsistencyTest`); recorded the fresh run (39/39 main, 14/14 test, 74/74 tests pass, 15/15 containers) and updated every test count in this document |
+| Version 2.3 (2026-11-07) | Applied the course-level review: removed the `IntConsumer` generated-key callback, converted 19 method references to 15 `RowMapper` lambdas, removed `@FunctionalInterface`, changed `List<?>` to `List<Object>`, replaced `java.nio.file` with `java.io.File`, and replaced `String.isBlank()` with `String.trim().isEmpty()`. Re-ran compilation (39/39 main, 14/14 test) and the full suite (74/74 tests, 15/15 containers) |
 | Functions mapped | **12/12** — Add Book, Update Book, Delete Book, Search Books, View Book Details, Add Member, Update Member, Search Members, Borrow Book, Return Book, Borrowing History, Overdue Books |
 | Verified source files | **74** application/UI/SQL files: 39 main Java + 14 test Java + 15 JSP + 1 tag + 2 assets + 3 SQL |
 | Missing/incomplete components | Controller/Servlet, Service/business logic, production transactions, Maven build/WAR, `web.xml`/`context.xml`, HTTP integration, CSRF validation, service-side overdue/inactive-member rules, optional reference/copy screens, E09 uniqueness |
 | Source code modified for version 2.1 | **No production code.** Only Markdown documentation was updated to match commit `1929e66`; the working tree also repairs a UTF-8 BOM/mojibake regression in 3 test files (`CrossTableSynchronizationTest`, `DataConsistencyTest`, `LoanBusinessLogicTest`) without changing test behavior. |
+| Source code modified for version 2.3 | **8 main Java files and 1 test helper.** Course-level review changes in `JdbcSupport`, `AbstractNamedEntityDAO`, `JdbcBookDAO`, `JdbcBookCopyDAO`, `JdbcLoanDAO`, `JdbcMemberDAO`, `JdbcBookAuthorDAO`, and `DatabaseConnection`; `TestDatabase` uses the same Java 8-compatible blank check. No schema or DAO interface change. |

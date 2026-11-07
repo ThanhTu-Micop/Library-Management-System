@@ -55,7 +55,7 @@ public class JdbcBookDAO implements BookDAO {
     @Override
     public Optional<Book> findById(Connection c, int bookId) {
         return JdbcSupport.queryOne(c, FIND_BY_ID,
-                "Failed to find book by id: " + bookId, JdbcBookDAO::mapBook, bookId);
+                "Failed to find book by id: " + bookId, rs -> mapBook(rs), bookId);
     }
 
     @Override
@@ -74,16 +74,17 @@ public class JdbcBookDAO implements BookDAO {
 
         return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
                 filterParamCount, criteria.getPage(), criteria.getSize(),
-                "Failed to search books", JdbcBookDAO::mapBook);
+                "Failed to search books", rs -> mapBook(rs));
     }
 
     @Override
     public int insert(Connection c, Book book) {
         String isbn = trimIsbn(book.getIsbn());
-        return JdbcSupport.insert(c, INSERT, "Failed to insert book: " + isbn,
-                book::setBookId,
+        int id = JdbcSupport.insert(c, INSERT, "Failed to insert book: " + isbn,
                 isbn, book.getTitle(), book.getPublisherId(), book.getCategoryId(),
                 book.getPublicationYear());
+        book.setBookId(id);
+        return 1;
     }
 
     @Override
@@ -103,7 +104,7 @@ public class JdbcBookDAO implements BookDAO {
     @Override
     public boolean isbnExists(Connection c, String isbn, Integer excludeBookId) {
         String value = trimIsbn(isbn);
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             return false;
         }
         int excluded = excludeBookId != null ? excludeBookId : -1;
@@ -113,7 +114,7 @@ public class JdbcBookDAO implements BookDAO {
 
     private void appendSearchFilters(StringBuilder countSb, StringBuilder dataSb,
                                      BookSearchCriteria criteria, List<Object> params) {
-        if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
+        if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
             countSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
             dataSb.append(" AND (unaccent(b.title) ILIKE unaccent(?) OR b.isbn ILIKE ?)");
             String like = JdbcSupport.likePattern(criteria.getKeyword());
@@ -130,7 +131,7 @@ public class JdbcBookDAO implements BookDAO {
             dataSb.append(" AND b.category_id = ?");
             params.add(criteria.getCategoryId());
         }
-        if (criteria.getAuthorName() != null && !criteria.getAuthorName().isBlank()) {
+        if (criteria.getAuthorName() != null && !criteria.getAuthorName().trim().isEmpty()) {
             String clause = " AND EXISTS (SELECT 1 FROM book_authors ba " +
                     "JOIN authors a ON a.author_id = ba.author_id " +
                     "WHERE ba.book_id = b.book_id AND unaccent(a.name) ILIKE unaccent(?))";

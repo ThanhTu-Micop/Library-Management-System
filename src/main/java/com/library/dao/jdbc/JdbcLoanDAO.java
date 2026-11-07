@@ -76,24 +76,25 @@ public class JdbcLoanDAO implements LoanDAO {
 
     @Override
     public int insert(Connection c, Loan loan) {
-        return JdbcSupport.insert(c, INSERT,
+        int id = JdbcSupport.insert(c, INSERT,
                 "Failed to insert loan for copyId=" + loan.getCopyId(),
-                loan::setLoanId,
                 loan.getCopyId(), loan.getMemberId(), loan.getLoanDate(), loan.getDueDate(),
                 loan.getReturnDate(), statusName(loan.getStatus()));
+        loan.setLoanId(id);
+        return 1;
     }
 
     @Override
     public Optional<Loan> findByIdForUpdate(Connection c, int loanId) {
         return JdbcSupport.queryOne(c, FIND_BY_ID_FOR_UPDATE,
-                "Failed to lock loan id: " + loanId, JdbcLoanDAO::mapLoan, loanId);
+                "Failed to lock loan id: " + loanId, rs -> mapLoan(rs), loanId);
     }
 
     @Override
     public Optional<Loan> findActiveByCopyId(Connection c, int copyId) {
         return JdbcSupport.queryOne(c, FIND_ACTIVE_BY_COPY_ID,
                 "Failed to find active loan by copy id: " + copyId,
-                JdbcLoanDAO::mapLoan, copyId);
+                rs -> mapLoan(rs), copyId);
     }
 
     @Override
@@ -118,13 +119,13 @@ public class JdbcLoanDAO implements LoanDAO {
 
         return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
                 filterParamCount, criteria.getPage(), criteria.getSize(),
-                "Failed to search loans", JdbcLoanDAO::mapLoanWithDisplay);
+                "Failed to search loans", rs -> mapLoanWithDisplay(rs));
     }
 
     @Override
     public List<Loan> findActive(Connection c) {
         return JdbcSupport.queryList(c, FIND_ACTIVE,
-                "Failed to find active loans", JdbcLoanDAO::mapLoanWithDisplay);
+                "Failed to find active loans", rs -> mapLoanWithDisplay(rs));
     }
 
     @Override

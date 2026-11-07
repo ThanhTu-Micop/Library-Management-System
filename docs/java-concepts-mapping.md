@@ -17,16 +17,16 @@ The mapping is intentionally evidence-based:
 
 | Item | Value |
 |---|---|
-| Last reviewed | 2026-11-01 |
-| Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, docs, and shared refactor helpers present; dead code removed and constants centralized; no Maven build or deployment descriptors |
-| Git state | `main` at `b499748` plus the fully merged feature branch `feature/test-suite-and-vietnamese-search`; see `git log` for details |
-| Code evidence audit | Class/method references reviewed against the current source; 9/9 DAO interface/implementation pairs matched; 3 locking SQL queries confirmed; shared-helper references checked after refactor |
+| Last reviewed | 2026-11-07 |
+| Repository state | Person 1 source, schema, seed, JSPs, CSS/JS, tests, docs, and shared refactor helpers present; dead code removed, constants centralized, and the 2026-11-07 course-level review applied; no Maven build or deployment descriptors |
+| Git state | `main` at `e39da9b` plus the 2026-11-07 course-level review changes; see `git log` and `git status` for details |
+| Code evidence audit | Class/method references reviewed against the current source; 9/9 DAO interface/implementation pairs matched; 3 locking SQL queries confirmed; shared-helper references checked after the 2026-11-07 course-level review |
 | Java source inspected | 39 main files, 14 test files |
-| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 2 shared JDBC support classes, 3 enums, 145 test-only lambdas (including 34 `assertAll` groups), 0 `switch`, 8 `Object...` varargs methods in `JdbcSupport` |
+| Source pattern inventory | 9 DAO interfaces, 9 JDBC implementations, 2 shared JDBC support classes, 3 enums, 145 test lambdas (including 34 `assertAll` groups), 15 production `RowMapper` lambdas, 0 method references, 0 `switch`, 8 `Object...` varargs methods in `JdbcSupport` |
 | JSP/CSS/JS source inspected | 15 JSPs, 1 shared tag, `app.css`, `app.js` |
 | SQL source inspected | `schema.sql`, `seed.sql` |
-| Compilation evidence | `javac --release 17 -encoding UTF-8`: 39/39 main and 14/14 test files compiled (2026-11-01) |
-| Test evidence | Standalone JUnit Platform Console: 74/74 DAO tests pass across 12 test classes (2026-11-01, after suite recombination) |
+| Compilation evidence | `javac --release 17 -encoding UTF-8`: 39/39 main and 14/14 test files compiled (2026-11-07) |
+| Test evidence | Standalone JUnit Platform Console: 74/74 DAO tests pass across 12 test classes (2026-11-07, after the course-level review) |
 | JSP evidence | Tomcat `JspC`: 15 JSPs + 1 tag produced 16 Java/class files with 0 errors |
 | Course material files in workspace | None |
 
@@ -55,7 +55,7 @@ Rows referencing service, controller, filter, or `web.xml` code are documented h
 | 1. Java Overview | Maven web application and layered package organization | `src/main/java/com/library/{model,dao,dao.jdbc,config,exception}`; Person 2: `service`, `controller`, `filter` | Source is organized into presentation, DAO, configuration, and exception layers; Maven build is still missing | Partially implemented |
 | 2. Basic I/O, Variables, Data Types, Operators | Primitive and reference types, fields, operators, comparisons | `model/Book.java`, `Member.java`, `Loan.java`, `BookCopy.java`, `Page.java`; all JDBC DAOs | Identifiers use `int`; counts use `long`; text uses `String`; dates use `LocalDate`/`LocalDateTime`; flags use `boolean`; pagination uses arithmetic and comparisons | Implemented |
 | 2. Basic I/O, Variables, Data Types, Operators | Configuration reading | `config/DatabaseConnection.java` | Reads `DB_URL`, `DB_USER`, `DB_PASSWORD`, and optional `DB_CONFIG` from the environment with defaults; holds no password constant | Implemented |
-| 2. Basic I/O, Variables, Data Types, Operators | File I/O | `config/DatabaseConnection.loadExternalPassword()` | Uses `FileReader`, `BufferedReader`, `Path`, and `Files.isReadable` to read an external password file whose path is outside the repository | Implemented |
+| 2. Basic I/O, Variables, Data Types, Operators | File I/O | `config/DatabaseConnection.loadExternalPassword()` | Uses `File`, `File.canRead()`, `FileReader`, and `BufferedReader` to read an external password file whose path is outside the repository | Implemented |
 | 3. Control Statements, Array, Debug | Conditions and `switch` statements | `dao/jdbc/Jdbc*DAO.java`; criteria classes | Applies nullable search filters with `if` conditions, ternary operators, enum checks, and result-set null checks. No `switch` is required by the current code, so none was added artificially | Partially implemented |
 | 3. Control Statements, Array, Debug | Loops and iteration | `dao/jdbc/Jdbc*DAO.java`, `JdbcBookAuthorDAO.replaceForBook` | Iterates `ResultSet` rows into model objects, loops over filter parameters, and batch-inserts author links | Implemented |
 | 3. Control Statements, Array, Debug | Arrays | `dao/jdbc/JdbcSupport.fillParams(PreparedStatement, Object...)` and the public query/update/insert helpers | Varargs are compiled as arrays; `fillParams` binds them with an indexed loop. No standalone array was added artificially. `HttpServletRequest.getParameterValues(...)` may add `String[]` in Person 2's controller | Implemented (varargs) |
@@ -69,7 +69,7 @@ Rows referencing service, controller, filter, or `web.xml` code are documented h
 | 6. Exception Handling, Enumerations, IO-Files | Enumerations | `model/enums/CopyStatus.java`, `MemberStatus.java`, `LoanStatus.java` | Type-safe status values mirror database CHECK constraints. Overdue is a derived display value computed from `due_date`/`return_date`, so it is not stored as an enum. `LoanState` was removed during the 2026-11-01 cleanup because nothing referenced it | Implemented |
 | 7. Generic, ArrayList, Lambda Expression | Generics | `model/Page.java` | One generic pagination wrapper serves book, member, loan, and overdue results without duplicating result classes | Implemented |
 | 7. Generic, ArrayList, Lambda Expression | `ArrayList` / `List` collections | `dao/jdbc/Jdbc*DAO.java` | DAO result mapping accumulates domain objects in `ArrayList` and returns `List`/`Page` abstractions | Implemented |
-| 7. Generic, ArrayList, Lambda Expression | Lambda expressions | `src/test/java/com/library/dao/*Test.java` | Tests use lambdas with `assertThrows`, `assertDoesNotThrow`, and similar JUnit APIs. No production lambda was added artificially | Implemented (tests only) |
+| 7. Generic, ArrayList, Lambda Expression | Lambda expressions | `src/test/java/com/library/dao/*Test.java`; `dao/jdbc/JdbcSupport.java`; `dao/jdbc/Jdbc*DAO.java` | Tests use lambdas with `assertThrows`, `assertDoesNotThrow`, and similar JUnit APIs. Production uses 15 lambdas as `RowMapper` implementations; no method references remain | Implemented (tests + production) |
 | 8. GUI | Java Swing/AWT/JavaFX and Java event handling | None | The project uses server-rendered JSP/HTML/CSS/vanilla JavaScript. JavaScript event handling is web UI behavior, not Java GUI programming | Not applicable |
 | 9. JDBC | `Connection`, `PreparedStatement`, `ResultSet`, `SQLException`, `DriverManager`, generated keys | `config/DatabaseConnection.java`; `dao/jdbc/JdbcSupport.java`; all `dao/jdbc/Jdbc*DAO.java` | Executes handwritten parameterized SQL, maps `ResultSet` rows, retrieves generated keys through the shared helper, wraps `SQLException`, and uses caller-supplied connections for transactions | Implemented |
 
@@ -90,7 +90,7 @@ Path prefixes used below:
 | 1. Overview | Constructor overloading | `main/model/Book.java`; `main/model/Loan.java` | A no-argument constructor and a full-field constructor coexist in the same class. |
 | 2. Basic I/O | Variables, primitive and reference types | `main/model/Book.java`; `main/model/Loan.java`; `main/model/Member.java`; `main/model/criteria/PageCriteria.java` | `Integer`, `String`, `LocalDate`, `LocalDateTime`, `boolean`, and `long` are used for real fields. |
 | 2. Basic I/O | Operators and arithmetic | `main/model/criteria/PageCriteria.java` (`getSize`); `main/model/Page.java` (constructor); `main/dao/jdbc/JdbcSupport.java` (`likePattern`); `main/dao/jdbc/JdbcBookDAO.java` (`trimIsbn`) | Pagination clamps with `Math.max`/`Math.min`, page counts use division and `Math.ceil`, and ISBN handling uses a ternary and `trim()`. |
-| 2. Basic I/O | File I/O | `main/config/DatabaseConnection.java` (`loadExternalPassword`) | `Files.isReadable`, `FileReader`, `BufferedReader`, `IOException`, and try-with-resources read an external password file. |
+| 2. Basic I/O | File I/O | `main/config/DatabaseConnection.java` (`loadExternalPassword`) | `File.canRead()`, `FileReader`, `BufferedReader`, `IOException`, and try-with-resources read an external password file. |
 | 3. Control | `if` and ternary conditions | `main/dao/jdbc/JdbcBookDAO.java` (`appendSearchFilters`); `main/dao/jdbc/AbstractNamedEntityDAO.java` (`search`, `nameExists`); `main/model/criteria/PageCriteria.java` | Each nullable search filter is applied with an `if`; there is no `switch` in the project. |
 | 3. Control | Loops | `main/dao/jdbc/JdbcSupport.java` (`fillParams`, `queryList`, `search`); `main/dao/jdbc/JdbcBookAuthorDAO.java` (`replaceForBook`); `main/dao/jdbc/AbstractNamedEntityDAO.java` (`search`) | `while (rs.next())` maps rows; enhanced `for` iterates lists and parameters; the indexed loop reads the varargs array. |
 | 3. Control | Array through varargs | `main/dao/jdbc/JdbcSupport.java` (`fillParams`, `queryOne`, `queryList`, `queryLong`, `exists`, `update`, `insert`); `test/dao/support/TestDatabase.java` (`firstNonBlank`); `test/dao/CrossTableSynchronizationTest.java` (`rawCount`) | `Object...` and `String...` are compiled as arrays; `params.length` and `params[i]` prove the array access. |
@@ -104,12 +104,12 @@ Path prefixes used below:
 | 6. Enum | Enumeration | `main/model/enums/LoanStatus.java`; `main/model/enums/CopyStatus.java`; `main/model/enums/MemberStatus.java` | Status values are type-safe constants and mirror database `CHECK` constraints. |
 | 7. Generic | Generic class and generic parameter | `main/model/Page.java`; `main/dao/BookDAO.java`; `main/dao/jdbc/AbstractNamedEntityDAO.java` | `Page<T>`, `List<T>`, and the generic reference DAO reuse one implementation across entity types. |
 | 7. Collection | `ArrayList`, `List`, `Set` | `main/model/Page.java`; `main/dao/jdbc/JdbcSupport.java` (`queryList`, `search`); `main/dao/jdbc/JdbcBookAuthorDAO.java` (`replaceForBook`) | `ArrayList` makes a defensive copy and accumulates rows; `List` is the return abstraction; `LinkedHashSet` removes duplicate author IDs. |
-| 7. Lambda | Lambda expression (tests only) | `test/dao/JdbcBookDAOTest.java`; `test/dao/JdbcBookCopyDAOTest.java`; `test/dao/JdbcLoanDAOTest.java`; `test/dao/TransactionIsolationTest.java`; `test/dao/JdbcDashboardDAOTest.java` | 145 lambdas exist across the 12 test classes, passed to JUnit `assertThrows`, `assertDoesNotThrow`, and 34 `assertAll` groups; no production lambda was added. |
+| 7. Lambda | Lambda expression | `test/dao/JdbcBookDAOTest.java`; `test/dao/JdbcBookCopyDAOTest.java`; `test/dao/JdbcLoanDAOTest.java`; `test/dao/TransactionIsolationTest.java`; `test/dao/JdbcDashboardDAOTest.java`; `main/dao/jdbc/JdbcSupport.java`; `main/dao/jdbc/Jdbc*DAO.java` | 145 lambdas exist across the 12 test classes, passed to JUnit `assertThrows`, `assertDoesNotThrow`, and 34 `assertAll` groups. Production adds 15 `RowMapper` lambdas such as `rs -> mapBook(rs)`; there are no method references. |
 | 8. GUI | Java GUI is not applicable | `web/WEB-INF/views/books/list.jsp`; `web/WEB-INF/tags/pagination.tag`; `web/assets/js/app.js` | The UI is JSP/JSTL/EL plus vanilla JavaScript; there is no Swing, AWT, or JavaFX. |
 | 9. JDBC | `DriverManager` and `Connection` | `main/config/DatabaseConnection.java`; `test/dao/support/TestDatabase.java`; `main/dao/BookDAO.java` | `DriverManager.getConnection` creates the connection; the caller passes it in; DAOs never commit, roll back, or close it. |
 | 9. JDBC | `PreparedStatement` and `ResultSet` | `main/dao/jdbc/JdbcSupport.java`; `main/dao/jdbc/JdbcBookDAO.java` (`appendSearchFilters`) | SQL uses `?` placeholders, `setObject`/`setInt`/`setString` bind values, and `while (rs.next())` maps rows. |
 | 9. JDBC | Accent-insensitive parameterized search | `main/dao/jdbc/JdbcBookDAO.java` (`appendSearchFilters`); `main/dao/jdbc/JdbcMemberDAO.java` (search); `src/main/resources/db/schema.sql`; `test/dao/DiacriticSearchTest.java` | `unaccent()` normalizes both the column and the `?` pattern, so `Chí Phèo`, `Chi Pheo`, and `CHÍ PHÈO` match. The pattern remains a bound parameter, and LIKE wildcards are escaped. |
-| 9. JDBC | Generated keys | `main/dao/jdbc/JdbcSupport.java` (`insert`); callers: `JdbcBookDAO.insert`, `JdbcBookCopyDAO.insert`, `JdbcLoanDAO.insert`, `JdbcMemberDAO.insert`, `AbstractNamedEntityDAO.insert` | `RETURN_GENERATED_KEYS` plus `getGeneratedKeys()` writes the database ID back into the model; the logic exists once in `JdbcSupport`. |
+| 9. JDBC | Generated keys | `main/dao/jdbc/JdbcSupport.java` (`insert`); callers: `JdbcBookDAO.insert`, `JdbcBookCopyDAO.insert`, `JdbcLoanDAO.insert`, `JdbcMemberDAO.insert`, `AbstractNamedEntityDAO.insert` | `RETURN_GENERATED_KEYS` plus `getGeneratedKeys()` returns the database ID; each DAO writes it back to the model. The key-retrieval logic exists once in `JdbcSupport`. |
 | 9. JDBC | Row locking | `main/dao/jdbc/JdbcBookCopyDAO.java` (`FIND_BY_ID_FOR_UPDATE`); `main/dao/jdbc/JdbcLoanDAO.java` (`FIND_BY_ID_FOR_UPDATE`, `FIND_ACTIVE_BY_COPY_ID`) | Three `SELECT ... FOR UPDATE` queries lock a copy or loan row inside the caller's transaction. |
 | 9. JDBC | Batch execution | `main/dao/jdbc/JdbcBookAuthorDAO.java` (`replaceForBook`) | `addBatch()` and `executeBatch()` insert all author links for a book. |
 | 9. JDBC | Database constraints | `src/main/resources/db/schema.sql` | Unique ISBN, trimmed length 13–20, due date exactly 14 days later, and one active loan per copy. |
@@ -134,7 +134,7 @@ If the teacher asks "which part of the code demonstrates the Java concept?", ope
 ### Claims to avoid
 
 - Do not say Java GUI is implemented; there is no Swing/AWT/JavaFX code.
-- Do not say lambdas are used in production; all 43 are in JUnit tests.
+- Do not say there are no production lambdas: 15 lambdas implement `RowMapper` in the JDBC layer. Tests contain 145 lambdas. Method references are not used.
 - Do not say standalone arrays are used; arrays appear only through varargs.
 - Do not say there is a large inheritance hierarchy; Person 1 has `DataAccessException extends RuntimeException`, a shallow generic `AbstractNamedEntityDAO<T>` for three reference DAOs, and `PageCriteria` shared by three criteria beans. The service/servlet hierarchy remains Person 2 work.
 - Do not say DAOs manage transactions; they receive a caller-owned `Connection` and never commit or roll back. The service layer that owns transaction boundaries belongs to Person 2.
@@ -142,7 +142,7 @@ If the teacher asks "which part of the code demonstrates the Java concept?", ope
 
 ## Source Pattern Inventory
 
-The tables below record the concrete patterns found in the 39 main and 14 test Java files during the 2026-11-01 inspection. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
+The tables below record the concrete patterns found in the 39 main and 14 test Java files during the 2026-11-07 course-level review. They provide a file-level index; they do not claim that every file in a grouped row uses every listed pattern.
 
 ### Inventory summary
 
@@ -150,10 +150,10 @@ The tables below record the concrete patterns found in the 39 main and 14 test J
 |---|---|
 | DAO interface / implementation | 9 `public interface ...DAO` contracts and 9 `implements ...DAO` JDBC classes, plus 2 shared JDBC support classes |
 | Enumerations | 3: `CopyStatus`, `LoanStatus`, `MemberStatus` |
-| Generated keys | 1 `getGeneratedKeys()` call site in `JdbcSupport.insert`, reused by 5 insert implementations |
+| Generated keys | 1 `getGeneratedKeys()` call site in `JdbcSupport.insert`, which returns the generated ID to 5 insert implementations |
 | Row-locking SQL | 3 `SELECT ... FOR UPDATE` queries: `JdbcBookCopyDAO.FIND_BY_ID_FOR_UPDATE`, `JdbcLoanDAO.FIND_BY_ID_FOR_UPDATE`, and `JdbcLoanDAO.FIND_ACTIVE_BY_COPY_ID` |
 | Varargs / implicit arrays | 8 `Object...` methods in `JdbcSupport`, `TestDatabase.firstNonBlank(String...)`, and one `Object...` test helper |
-| Lambda expressions | 43, all in JUnit assertions across the original, merged, and diacritic test files; none in main source |
+| Lambda expressions | 145 in JUnit assertions across the test classes; 15 in main source as `RowMapper` implementations; 0 method references |
 | `switch` statements | 0; conditions use `if` and ternary operators |
 | Java GUI classes | 0 Swing/AWT/JavaFX classes; the UI is JSP/HTML/CSS/vanilla JavaScript |
 
@@ -162,7 +162,7 @@ The tables below record the concrete patterns found in the 39 main and 14 test J
 | File(s) | Patterns present |
 |---|---|
 | `config/AppConfig.java` | `final` class, private constructor, `public static final` constants for SQLState values, loan period, and pagination defaults including `MAX_PAGE_SIZE`; no credential fields |
-| `config/DatabaseConnection.java` | Static connection factory; environment-variable precedence (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `DB_CONFIG`); `Properties`; `DriverManager`; file I/O with `Path`, `Files.isReadable`, `FileReader`, and `BufferedReader`; null/blank checks; try-with-resources; caller-owned transaction. The unused `closeQuietly` helper was removed |
+| `config/DatabaseConnection.java` | Static connection factory; environment-variable precedence (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `DB_CONFIG`); `Properties`; `DriverManager`; file I/O with `File`, `File.canRead()`, `FileReader`, and `BufferedReader`; null/blank checks using `trim().isEmpty()`; try-with-resources; caller-owned transaction. The unused `closeQuietly` helper was removed |
 | `exception/DataAccessException.java` | Inheritance from `RuntimeException`; overloaded constructors; exception chaining with `super(message, cause)`; `instanceof SQLException`; final `sqlState` field; overridden `getMessage()` |
 | `model/Book.java`, `Author.java`, `Publisher.java`, `Category.java`, `BookCopy.java`, `Member.java`, `Loan.java`, `DashboardStats.java` | Encapsulation with private fields and accessors; default and convenience constructors; `equals`/`hashCode` for identity-bearing models and `toString` for all; composition in `Book.authors`; enum and date fields; DAO-populated display projections |
 | `model/Page.java` | Generic class `Page<T>` and generic `List<T>`; defensive copy with `ArrayList`; unmodifiable list; arithmetic for pages; bean properties `first` and `last`; additional `hasNext()`/`hasPrevious()` methods are not EL bean properties; `Page<?>` in `equals` |
@@ -180,7 +180,7 @@ The tables below record the concrete patterns found in the 39 main and 14 test J
 
 | File(s) | Patterns present |
 |---|---|
-| `dao/jdbc/JdbcSupport.java` | Package-private final utility; private constructor; functional `RowMapper<T>`; `Object...`/`List<?>` parameter binding; LIKE escaping; single-row/list/long queries; `exists`; affected-row updates; generated-key inserts; shared count+data pagination; `DataAccessException` wrapping; no transaction ownership |
+| `dao/jdbc/JdbcSupport.java` | Package-private final utility; private constructor; one-method `RowMapper<T>` interface implemented with 15 lambdas; `Object...`/`List<Object>` parameter binding; LIKE escaping; single-row/list/long queries; `exists`; affected-row updates; generated-key inserts that return the ID; shared count+data pagination; `DataAccessException` wrapping; no transaction ownership |
 | `dao/jdbc/AbstractNamedEntityDAO.java` | Package-private generic base class; constructor-supplied table metadata; shared CRUD, keyword search, pagination, and duplicate-name check; abstract row mapping/accessors; subclasses extend it |
 | `dao/jdbc/JdbcAuthorDAO.java`, `JdbcCategoryDAO.java`, `JdbcPublisherDAO.java` | `implements` their DAO interfaces and `extends AbstractNamedEntityDAO<T>`; only table metadata, row mapping, and ID/name accessors remain; category keeps case-insensitive name uniqueness |
 | `dao/jdbc/JdbcBookDAO.java` | CRUD; enriched joins for publisher/category; correlated subquery for available copies; `EXISTS` filters for author and availability; ISBN trimming; dynamic search and count queries; delegates statement mechanics to `JdbcSupport` |
@@ -209,9 +209,42 @@ The tables below record the concrete patterns found in the 39 main and 14 test J
 ### Patterns deliberately not present
 
 - No `switch` statement was added; nullable filter logic is clearer with `if` and ternaries.
-- No production lambda was added; lambdas appear only where JUnit's functional assertion APIs require them.
+- Production lambdas are limited to 15 `RowMapper` implementations in the JDBC layer; JUnit lambdas remain test-only. No method references are used.
 - No Java Swing/AWT/JavaFX code exists; the agreed UI is server-rendered JSP with browser JavaScript.
 - Servlet, Service, filter, and Maven build patterns remain Person 2 scope and are not claimed here.
+
+## Course-Level Review (2026-11-07)
+
+This review checked the 39 production Java files against the nine course topics and removed syntax that was not needed for the project or the syllabus. The goal was not to remove every Java 8+ API; it was to keep every construct explainable in an oral review.
+
+### Changes applied
+
+| Change | Before | After |
+|---|---|---|
+| Generated-key callback | `JdbcSupport.insert(..., IntConsumer idSetter, ...)` plus `id -> setId(entity, id)` | `JdbcSupport.insert(...)` returns the generated ID; each DAO calls `setXId(id)` and returns `1` |
+| Method references | 19 method references such as `JdbcBookDAO::mapBook` and `book::setBookId` | 15 lambda expressions such as `rs -> mapBook(rs)`; no method references |
+| Functional-interface annotation | `@FunctionalInterface` on `RowMapper` | Plain one-method interface `RowMapper<T>`; lambdas still implement it |
+| Wildcard parameter | `fillParams(PreparedStatement, List<?>)` | `fillParams(PreparedStatement, List<Object>)` |
+| External password file | `java.nio.file.Path` / `Files.isReadable` | `java.io.File` / `File.canRead()` |
+| Blank checks | `String.isBlank()` | `String.trim().isEmpty()` |
+
+### Constructs retained deliberately
+
+| Construct | Location | Why it stays |
+|---|---|---|
+| `Page<T>`, `List<T>` | `model/Page.java`; DAO contracts | Topic 7 covers generics; one pagination type serves books, members, loans, and overdue lists |
+| `AbstractNamedEntityDAO<T>` | `dao/jdbc/AbstractNamedEntityDAO.java` | Demonstrates inheritance, abstract methods, and generics without duplicating reference-table CRUD |
+| `Optional<T>` | 7 DAO interfaces (8 method declarations) and their JDBC implementations | Makes "not found" explicit in the API; replacing it with `null` would touch the DAO contracts, the test suite, and Person 2's future service layer |
+| `RowMapper<T>` + 15 lambdas | `JdbcSupport` and `Jdbc*DAO` | A one-method interface is standard OOP; the lambdas are course topic 7 and centralize result-set mapping |
+| `Page<?>` in `equals` | `model/Page.java` | Correct wildcard use for comparing two pages with unknown element types |
+| `Collections.unmodifiableList` | `model/Page.java` | Defensive copy; not a language-level advanced feature |
+| `LocalDate` / `LocalDateTime` | models and JDBC mapping | Java 8 date/time API used for real JDBC date columns |
+| `FOR UPDATE`, batch, generated keys | `JdbcBookCopyDAO`, `JdbcLoanDAO`, `JdbcBookAuthorDAO`, `JdbcSupport` | JDBC/database techniques required by the transaction and referential-integrity rules, not Java OOP syntax |
+
+### Remaining notes
+
+- `Optional` and `LocalDate`/`LocalDateTime` are not explicitly named in the nine course topics; `Page<?>` is wildcard generics. All three are documented here so an oral review can explain them in one sentence.
+- No production code uses streams, records, sealed types, `var`, reflection, threads, custom annotations, or `Serializable` implementations.
 
 ## Topic-Specific Notes
 
@@ -241,7 +274,7 @@ Exception handling and resource management are central to the JDBC layer: `DataA
 
 ### Topic 7 — Generic, ArrayList, Lambda Expression
 
-Generics and `ArrayList` have clear roles in pagination and DAO result mapping. Lambdas appear naturally in JUnit assertions; they were not added to production code artificially.
+Generics and `ArrayList` have clear roles in pagination and DAO result mapping. Lambdas appear naturally in JUnit assertions and as 15 `RowMapper` implementations in the JDBC layer; they replace repetitive row-mapping loops rather than adding artificial syntax. No method references remain.
 
 ### Topic 8 — GUI
 
@@ -280,7 +313,7 @@ Comments are concise English explanations of the Java concept and its role in th
 ## Current Conclusion
 
 - **Code evidence:** stable class/method pointers are listed in the Code Evidence Index above; use that table when the instructor asks which code demonstrates a Java feature.
-- **Implemented:** variables/types/operators, configuration and file I/O, loops, varargs arrays, debugging process, classes/objects/methods, encapsulation, packages, interfaces/polymorphism, exception handling, enumerations, generics, `ArrayList`, test lambdas, and JDBC.
+- **Implemented:** variables/types/operators, configuration and file I/O, loops, varargs arrays, debugging process, classes/objects/methods, encapsulation, packages, interfaces/polymorphism, exception handling, enumerations, generics, `ArrayList`, test and production `RowMapper` lambdas, and JDBC.
 - **Partially implemented:** Maven web-application packaging (build missing), conditions/`switch` (conditions present, no switch needed), and inheritance (runtime-exception parent present; service/servlet hierarchy pending Person 2).
 - **Planned:** Maven build, Controller/Service/filter code, Servlet inheritance, and HTTP integration.
 - **Not applicable:** Java GUI.

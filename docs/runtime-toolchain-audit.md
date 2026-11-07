@@ -3,16 +3,16 @@
 | Field | Value |
 |---|---|
 | Project | Library Management System |
-| Audit date | 2026-11-01 |
-| Report version | 3.3 |
+| Audit date | 2026-11-07 |
+| Report version | 3.5 |
 | Auditor scope | Person 1: database, SQL, JDBC/DAO, and UI/UX |
 | Workspace | `C:\Users\BINHND\Desktop\Library-Management-System-main\Library-Management-System-main\library-management-system` |
 | Audit type | Environment inspection plus Person 1 implementation verification |
-| Changes made | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and documentation were created; the runtime toolchain was previously installed. On 2026-10-30 duplicated JDBC/criteria/test-fixture/JSP-pagination code was refactored into shared helpers. On 2026-11-01 unused `LoanState` and `closeQuietly` were removed, SQLState/loan-period constants were centralized in `AppConfig`, a UTF-8 BOM and mojibake regression in 3 test files was fixed, the suite was recombined from 124 to 74 tests by rule ownership, and compilation plus all 74 tests were re-run |
+| Changes made | Person 1 source, schema, seed, JSPs, CSS/JS, tests, and documentation were created; the runtime toolchain was previously installed. On 2026-10-30 duplicated JDBC/criteria/test-fixture/JSP-pagination code was refactored into shared helpers. On 2026-11-01 unused `LoanState` and `closeQuietly` were removed, SQLState/loan-period constants were centralized in `AppConfig`, a UTF-8 BOM and mojibake regression in 3 test files was fixed, and the suite was recombined from 124 to 74 tests by rule ownership. On 2026-11-07 the course-level review removed the `IntConsumer` generated-key callback and all method references, converted row mappers to 15 `RowMapper` lambdas, removed `@FunctionalInterface`, changed `List<?>` to `List<Object>`, replaced `java.nio.file` with `java.io.File`, and replaced `String.isBlank()` with `String.trim().isEmpty()`; compilation and all 74 tests were re-run |
 | Person 1 gate | **PASS** for the agreed standalone scope |
 | Full Phase 2 gate | **BLOCKED** — Maven build, WAR deployment, HTTP flows, and Surefire integration are not available |
 
-> **Gate verdict (2026-11-01): Person 1 scope is implemented, cleaned up, and verified with standalone tools. Full Phase 2 remains BLOCKED.** The project still has no `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, Controllers, Services, filters, WAR, deployment, or HTTP evidence. Maven, WAR, and HTTP success must not be claimed until Person 2 supplies actual results.
+> **Gate verdict (2026-11-07): Person 1 scope is implemented, cleaned up, course-level reviewed, and verified with standalone tools. Full Phase 2 remains BLOCKED.** The project still has no `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, Controllers, Services, filters, WAR, deployment, or HTTP evidence. Maven, WAR, and HTTP success must not be claimed until Person 2 supplies actual results.
 
 ## 1. Executive Summary
 
@@ -182,11 +182,11 @@ The test database URL was supplied with `TEST_DB_URL=jdbc:postgresql://127.0.0.1
 EXIT_CODE=0
 ```
 
-Re-run on 2026-11-01 after the dead-code, constant, and test-suite recombination work: **74/74 tests successful, 0 skipped, 15/15 containers successful, exit code 0**. The compile step reported 39 main and 14 test source files.
+Re-run on 2026-11-07 after the course-level review: **74/74 tests successful, 0 skipped, 15/15 containers successful, exit code 0**. The compile step reported 39 main and 14 test source files.
 
 The 74 tests cover book CRUD/search/filters, member uniqueness/search/active-loan counts, loan borrow/return/overdue/history queries, dashboard metrics, book-copy lifecycle, book-author replacement, reference data, raw-SQL schema invariants, cross-table synchronization, transaction isolation, and accent-insensitive Vietnamese search.
 
-The suite was recombined by rule ownership: DAO behavior lives in the owning `Jdbc*DAOTest`, cross-table behavior in `CrossTableSynchronizationTest`, and raw-SQL schema invariants in `DataConsistencyTest`. Same-rule INSERT/UPDATE and boundary cases were merged with `assertAll`; no assertion was dropped. The source now contains 145 lambdas and 34 `assertAll` calls across the 12 test classes.
+The suite was recombined by rule ownership: DAO behavior lives in the owning `Jdbc*DAOTest`, cross-table behavior in `CrossTableSynchronizationTest`, and raw-SQL schema invariants in `DataConsistencyTest`. Same-rule INSERT/UPDATE and boundary cases were merged with `assertAll`; no assertion was dropped. The source now contains 145 test lambdas and 34 `assertAll` calls across the 12 test classes. Production code contains 15 `RowMapper` lambdas and no method references.
 
 The initial run of the merged suite on 2026-10-27 exposed eight test-side defects (two category inserts reused seeded names; five raw-SQL RESTRICT tests asserted `DataAccessException` instead of `SQLException`; one lock-timeout test omitted a rollback). Those were corrected before the 124/124 baseline was recorded; the later recombination reduced the method count to 74 without changing production DAO or schema behavior.
 
@@ -261,7 +261,7 @@ SELECT ... WHERE unaccent(title) ILIKE unaccent('%Chi Pheo%')   -> book_id 2, Ch
 SELECT ... WHERE unaccent(title) ILIKE unaccent('%Chí Phèo%')   -> book_id 2, Chí Phèo
 ```
 
-`DiacriticSearchTest` adds 7 DAO tests for accented input, unaccented input, uppercase input, partial input, author names, member names, and LIKE wildcard escaping.
+`DiacriticSearchTest` adds 4 DAO test methods covering accented, unaccented, uppercase, and partial book keyword input, author and member names, and LIKE wildcard escaping.
 
 The JSP search forms now declare `accept-charset="UTF-8"`, but POST request decoding still requires Person 2 to call `request.setCharacterEncoding("UTF-8")` before reading parameters. Tomcat 10 decodes GET query strings as UTF-8 by default.
 
@@ -347,7 +347,7 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 | JDK 17 installation | Temurin `17.0.20.1+1`; `JAVA_HOME` and `PATH` set | Standalone JDK 17 used by Maven | **Verified** | `java`, `javac`, and `mvn -v` report 17 |
 | Maven installation | `3.9.16` on User `PATH` | Maven 3.9.x | **Verified** | `mvn -v` |
 | Maven project configuration | No `pom.xml` or wrapper | WAR packaging, release 17, UTF-8, Jakarta APIs, pgJDBC, JUnit/Surefire | **Missing** | Person 2 owns the build |
-| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 39 main and 14 test files compiled (2026-11-01); POM still missing |
+| Java compilation target | Standalone `javac --release 17` | `maven.compiler.release=17`; class-file major version 61 | **Partially verified** | 39 main and 14 test files compiled (2026-11-07); POM still missing |
 | PostgreSQL server | `16.15` local cluster on `127.0.0.1:5432` | PostgreSQL 16.x with application role and databases | **Verified** | Schema/seed applied; SQL metadata and constraint probes passed |
 | PostgreSQL JDBC | `42.7.14` JAR | Driver on project runtime classpath | **Partially verified** | DAO tests executed; POM dependency still missing |
 | Tomcat installation | `10.1.61` installed | Tomcat 10.1.x | **Verified** | `version.bat`; previous HTTP 200 on stock pages |
@@ -379,7 +379,7 @@ Status values: **Verified**, **Partially verified**, **Missing**, **Unverified**
 |---|---|---|
 | Schema, seed, constraints, and indexes exist | **PASS** | Applied to both databases; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes |
 | Constraint behavior is enforced | **PASS** | Seven rollback-safe probes passed on both databases |
-| Main and test source compile on JDK 17 | **PASS** | `javac --release 17 -encoding UTF-8`: 39 main, 14 test files (2026-11-01) |
+| Main and test source compile on JDK 17 | **PASS** | `javac --release 17 -encoding UTF-8`: 39 main, 14 test files (2026-11-07) |
 | Manual PK/FK/relation probes pass | **PASS** | 48 probes in rolled-back transaction on `library_test`; 0 failures; no leftover rows |
 | DAO tests pass against `library_test` | **PASS (standalone)** | 74/74 tests, 0 failures, exit code 0 |
 | Accent-insensitive Vietnamese search | **PASS (DAO/SQL)** | `unaccent` extension installed; `Chí Phèo`, `Chi Pheo`, `CHÍ PHÈO` all match; 4 tests pass |
@@ -480,3 +480,4 @@ Maven, WAR, deployment, and HTTP success must not be claimed until Person 2 prod
 | 2026-10-31 | 3.2 | Updated evidence after the extended DAO suite and Vietnamese search merge |
 | 2026-11-01 | 3.3 | Removed `LoanState` and `closeQuietly`; centralized SQLState/loan-period constants; fixed UTF-8 BOM and mojibake in 3 test files; re-ran compilation and tests (39/39 main, 14/14 test, 124/124 pass at that point); counts and stale references updated across the documentation set |
 | 2026-11-01 | 3.4 | Recombined the DAO suite from 124 to 74 test methods by rule ownership, merging same-rule boundaries with `assertAll` without dropping assertions; re-ran the full suite (39/39 main, 14/14 test, 74/74 pass, 15/15 containers) and updated all documentation |
+| 2026-11-07 | 3.5 | Applied the course-level review: removed the `IntConsumer` generated-key callback, converted 19 method references to 15 `RowMapper` lambdas, removed `@FunctionalInterface`, changed `List<?>` to `List<Object>`, replaced `java.nio.file` with `java.io.File`, and replaced `String.isBlank()` with `String.trim().isEmpty()`; re-ran compilation (39/39 main, 14/14 test) and the full suite (74/74 pass, 15/15 containers) |

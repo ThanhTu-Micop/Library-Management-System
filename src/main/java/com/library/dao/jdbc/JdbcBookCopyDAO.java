@@ -47,22 +47,24 @@ public class JdbcBookCopyDAO implements BookCopyDAO {
     public List<BookCopy> findByBookId(Connection c, int bookId) {
         return JdbcSupport.queryList(c, FIND_BY_BOOK_ID,
                 "Failed to find book copies by book id: " + bookId,
-                JdbcBookCopyDAO::mapBookCopy, bookId);
+                rs -> mapBookCopy(rs), bookId);
     }
 
     @Override
     public Optional<BookCopy> findByIdForUpdate(Connection c, int copyId) {
         return JdbcSupport.queryOne(c, FIND_BY_ID_FOR_UPDATE,
                 "Failed to lock book copy id: " + copyId,
-                JdbcBookCopyDAO::mapBookCopy, copyId);
+                rs -> mapBookCopy(rs), copyId);
     }
 
     @Override
     public int insert(Connection c, BookCopy copy) {
         CopyStatus status = copy.getStatus() != null ? copy.getStatus() : CopyStatus.AVAILABLE;
-        return JdbcSupport.insert(c, INSERT,
+        int id = JdbcSupport.insert(c, INSERT,
                 "Failed to insert book copy: " + copy.getCopyCode(),
-                copy::setCopyId, copy.getBookId(), copy.getCopyCode(), status.name());
+                copy.getBookId(), copy.getCopyCode(), status.name());
+        copy.setCopyId(id);
+        return 1;
     }
 
     @Override
@@ -80,7 +82,7 @@ public class JdbcBookCopyDAO implements BookCopyDAO {
     @Override
     public List<BookCopy> findAvailableWithBook(Connection c) {
         return JdbcSupport.queryList(c, FIND_AVAILABLE_WITH_BOOK,
-                "Failed to find available book copies", JdbcBookCopyDAO::mapAvailableCopy);
+                "Failed to find available book copies", rs -> mapAvailableCopy(rs));
     }
 
     private static BookCopy mapBookCopy(ResultSet rs) throws SQLException {

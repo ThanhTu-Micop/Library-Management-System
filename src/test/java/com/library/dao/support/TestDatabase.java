@@ -39,7 +39,7 @@ public final class TestDatabase {
         String user = System.getenv(ENV_USER);
         String password = System.getenv(ENV_PASSWORD);
 
-        if (user == null || user.isBlank()) {
+        if (user == null || user.trim().isEmpty()) {
             user = DEFAULT_USER;
         }
 
@@ -63,7 +63,7 @@ public final class TestDatabase {
 
     private static String firstNonBlank(String... values) {
         for (String value : values) {
-            if (value != null && !value.isBlank()) {
+            if (value != null && !value.trim().isEmpty()) {
                 return value;
             }
         }

@@ -54,7 +54,7 @@ public class JdbcMemberDAO implements MemberDAO {
     @Override
     public Optional<Member> findById(Connection c, int memberId) {
         return JdbcSupport.queryOne(c, FIND_BY_ID,
-                "Failed to find member by id: " + memberId, JdbcMemberDAO::mapMember, memberId);
+                "Failed to find member by id: " + memberId, rs -> mapMember(rs), memberId);
     }
 
     @Override
@@ -73,22 +73,23 @@ public class JdbcMemberDAO implements MemberDAO {
 
         return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
                 filterParamCount, criteria.getPage(), criteria.getSize(),
-                "Failed to search members", JdbcMemberDAO::mapMember);
+                "Failed to search members", rs -> mapMember(rs));
     }
 
     @Override
     public List<Member> findAllActive(Connection c) {
         return JdbcSupport.queryList(c, FIND_ALL_ACTIVE,
-                "Failed to find all active members", JdbcMemberDAO::mapMember);
+                "Failed to find all active members", rs -> mapMember(rs));
     }
 
     @Override
     public int insert(Connection c, Member member) {
-        return JdbcSupport.insert(c, INSERT,
+        int id = JdbcSupport.insert(c, INSERT,
                 "Failed to insert member: " + member.getMemberCode(),
-                member::setMemberId,
                 member.getMemberCode(), member.getFullName(), normalizeEmail(member.getEmail()),
                 statusName(member.getStatus()));
+        member.setMemberId(id);
+        return 1;
     }
 
     @Override
@@ -119,7 +120,7 @@ public class JdbcMemberDAO implements MemberDAO {
 
     private void appendFilters(StringBuilder countSb, StringBuilder dataSb,
                                MemberSearchCriteria criteria, List<Object> params) {
-        if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
+        if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
             countSb.append(" AND (unaccent(m.full_name) ILIKE unaccent(?) OR m.member_code ILIKE ?)");
             dataSb.append(" AND (unaccent(m.full_name) ILIKE unaccent(?) OR m.member_code ILIKE ?)");
             String like = JdbcSupport.likePattern(criteria.getKeyword());

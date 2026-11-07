@@ -1,0 +1,192 @@
+classDiagram
+    direction LR
+
+    class Page~T~ {
+        -List~T~ content
+        -long totalElements
+        -int totalPages
+        -int page
+        -int size
+        +getContent() List~T~
+        +getTotalElements() long
+        +getTotalPages() int
+        +getPage() int
+        +getSize() int
+        +isFirst() boolean
+        +isLast() boolean
+        +hasNext() boolean
+        +hasPrevious() boolean
+    }
+
+    class Book {
+        -Integer bookId
+        -String isbn
+        -String title
+        -Integer publisherId
+        -Integer categoryId
+        -Integer publicationYear
+        -LocalDateTime createdAt
+        -String publisherName
+        -String categoryName
+        -List~Author~ authors
+        -Integer availableCopies
+        +getBookId() Integer
+        +setBookId(Integer) void
+        +getAuthors() List~Author~
+        +setAuthors(List~Author~) void
+        +equals(Object) boolean
+        +hashCode() int
+        +toString() String
+    }
+
+    class BookCopy {
+        -Integer copyId
+        -Integer bookId
+        -String copyCode
+        -CopyStatus status
+        -LocalDateTime createdAt
+        -String bookTitle
+        +getCopyId() Integer
+        +getStatus() CopyStatus
+        +setStatus(CopyStatus) void
+    }
+
+    class Loan {
+        -Integer loanId
+        -Integer copyId
+        -Integer memberId
+        -LocalDate loanDate
+        -LocalDate dueDate
+        -LocalDate returnDate
+        -LoanStatus status
+        -LocalDateTime createdAt
+        -String bookTitle
+        -String copyCode
+        -String memberName
+        -boolean overdue
+        -long daysOverdue
+        +getLoanId() Integer
+        +isOverdue() boolean
+        +getDaysOverdue() long
+    }
+
+    class Member {
+        -Integer memberId
+        -String memberCode
+        -String fullName
+        -String email
+        -MemberStatus status
+        -LocalDateTime createdAt
+        -long activeLoanCount
+        +getMemberId() Integer
+        +getStatus() MemberStatus
+    }
+
+    class Author {
+        -Integer authorId
+        -String name
+        -LocalDateTime createdAt
+        +getAuthorId() Integer
+        +getName() String
+    }
+
+    class Category {
+        -Integer categoryId
+        -String name
+        -LocalDateTime createdAt
+        +getCategoryId() Integer
+        +getName() String
+    }
+
+    class Publisher {
+        -Integer publisherId
+        -String name
+        -LocalDateTime createdAt
+        +getPublisherId() Integer
+        +getName() String
+    }
+
+    class DashboardStats {
+        -long totalBooks
+        -long totalMembers
+        -long totalCopies
+        -long activeLoans
+        -long overdueLoans
+        -long availableCopies
+        +getTotalBooks() long
+        +getActiveLoans() long
+        +getOverdueLoans() long
+    }
+
+    class PageCriteria {
+        <<abstract>>
+        -Integer page
+        -Integer size
+        +getPage() Integer
+        +setPage(Integer) void
+        +getSize() Integer
+        +setSize(Integer) void
+    }
+
+    class BookSearchCriteria {
+        -String keyword
+        -Integer publisherId
+        -Integer categoryId
+        -String authorName
+        -Boolean availableOnly
+    }
+
+    class MemberSearchCriteria {
+        -String keyword
+        -MemberStatus status
+    }
+
+    class LoanSearchCriteria {
+        -Integer memberId
+        -Integer copyId
+        -Integer bookId
+        -LoanStatus status
+        -LocalDate fromDate
+        -LocalDate toDate
+        -Boolean overdueOnly
+        -LocalDate today
+    }
+
+    class CopyStatus {
+        <<enumeration>>
+        AVAILABLE
+        BORROWED
+        MAINTENANCE
+    }
+
+    class LoanStatus {
+        <<enumeration>>
+        ACTIVE
+        RETURNED
+    }
+
+    class MemberStatus {
+        <<enumeration>>
+        ACTIVE
+        INACTIVE
+    }
+
+    Book --> Publisher : publisherId
+    Book --> Category : categoryId
+    Book "1" o-- "0..*" BookCopy : has copies
+    Book "0..*" -- "0..*" Author : book_authors
+    BookCopy "1" o-- "0..*" Loan : appears in
+    Member "1" o-- "0..*" Loan : borrows
+
+    PageCriteria <|-- BookSearchCriteria
+    PageCriteria <|-- MemberSearchCriteria
+    PageCriteria <|-- LoanSearchCriteria
+
+    BookCopy --> CopyStatus
+    Loan --> LoanStatus
+    Member --> MemberStatus
+    LoanSearchCriteria --> LoanStatus
+    MemberSearchCriteria --> MemberStatus
+
+    %% Page<T> is returned by DAO search methods; no domain association is drawn
+    %% to keep the domain relationships readable. See Table 2 and Section VI.

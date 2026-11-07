@@ -7,10 +7,10 @@
 | Scope | Database, SQL, models, JDBC DAO, DAO tests, JSP/UI, CSS/JS, DB/UI docs |
 | Out of scope | `pom.xml`, Maven Wrapper, `web.xml`, `context.xml`, Controllers, Services, filters, transaction boundaries |
 | Runtime baseline | JDK 17, Maven 3.9.16, Tomcat 10.1.61, PostgreSQL 16.15, pgJDBC 42.7.14, JSTL 3.0.1 |
-| Last updated | 2026-11-01 |
+| Last updated | 2026-11-07 |
 | Evidence policy | Never claim build, test, JSP, or deployment success without actual command output |
 
-> **Implementation note (2026-11-01):** This plan has been implemented for the Person 1 scope. Current evidence is recorded in [`docs/runtime-toolchain-audit.md`](runtime-toolchain-audit.md): 39 main Java files, 14 test files, 74/74 standalone DAO tests across 12 classes, 15 JSPs plus 1 shared tag compiled by `JspC` (16 generated files), schema/seed applied to both databases, and 214 EL property references checked. Dead code (`LoanState`, `closeQuietly`) was removed, SQLState/loan-period constants were centralized in `AppConfig`, and the suite was recombined by rule ownership and re-run on 2026-11-01. The unchecked boxes below preserve the original work-breakdown checklist; they are not a claim that the work is pending. Maven, WAR, deployment, Controllers, Services, and HTTP flows remain Person 2 blockers.
+> **Implementation note (2026-11-07):** This plan has been implemented for the Person 1 scope. Current evidence is recorded in [`docs/runtime-toolchain-audit.md`](runtime-toolchain-audit.md): 39 main Java files, 14 test files, 74/74 standalone DAO tests across 12 classes, 15 JSPs plus 1 shared tag compiled by `JspC` (16 generated files), schema/seed applied to both databases, and 214 EL property references checked. Dead code (`LoanState`, `closeQuietly`) was removed, SQLState/loan-period constants were centralized in `AppConfig`, and the suite was recombined by rule ownership. The 2026-11-07 course-level review removed the `IntConsumer` generated-key callback, all method references, the `@FunctionalInterface` annotation, the `List<?>` wildcard, NIO file access, and `String.isBlank()`; compilation and all 74 tests were re-run. The unchecked boxes below preserve the original work-breakdown checklist; they are not a claim that the work is pending. Maven, WAR, deployment, Controllers, Services, and HTTP flows remain Person 2 blockers.
 
 ## 1. Locked Decisions
 
@@ -42,7 +42,7 @@
 
 - Main Java sources compiled with `javac --release 17 -encoding UTF-8`: 39 files, 40 class files (including `JdbcSupport$RowMapper`).
 - Test sources compiled with `javac --release 17 -encoding UTF-8`: 14 files, 14 class files.
-- Standalone JUnit Platform Console (re-run 2026-11-01): 74 tests found, 74 successful, 0 failed, 0 skipped, 15/15 containers successful, exit code 0 across 12 test classes. The suite was recombined from the earlier 124 methods by rule ownership; no assertion was dropped.
+- Standalone JUnit Platform Console (re-run 2026-11-07): 74 tests found, 74 successful, 0 failed, 0 skipped, 15/15 containers successful, exit code 0 across 12 test classes. The suite was recombined from the earlier 124 methods by rule ownership; no assertion was dropped.
 - Schema and seed applied to both `library_db` and `library_test`; 8 tables, 11 named indexes plus 3 inline unique-constraint indexes, and seed counts `3/4/4/4/8/3/3/4` verified.
 - The `unaccent` extension is installed in both databases; `Chí Phèo` and `Chi Pheo` both return the same book through the DAO search.
 - Seven rollback-safe constraint probes passed on both databases: category/email case-insensitive duplicates, blank email, ISBN 12/13/20, 15-day due date, and duplicate active loan.
@@ -634,3 +634,4 @@ Person 2 must provide:
 | 2026-10-30 | Removed duplicated JDBC, criteria, test-fixture, JSP pagination, and dead JavaScript code; added `JdbcSupport`, `AbstractNamedEntityDAO`, `PageCriteria`, `TestFixtures`, and `pagination.tag`; re-verified 124/124 tests, 40 main/14 test files, and 16 `JspC` outputs. |
 | 2026-11-01 | Removed unused `LoanState` enum and `DatabaseConnection.closeQuietly`; replaced hardcoded SQLState strings across 9 test files and `plusDays(14)` in `TestFixtures.insertActiveLoan` with `AppConfig` constants; fixed a UTF-8 BOM and mojibake regression in 3 test files; re-ran the suite: 39/39 main, 14/14 test, 124/124 tests pass at that point. Added `docs/person2-controller-todo.md`. |
 | 2026-11-01 | Recombined the test suite from 124 to 74 methods by rule ownership without dropping assertions (DAO behavior in `Jdbc*DAOTest`, cross-table in `CrossTableSynchronizationTest`, raw-SQL invariants in `DataConsistencyTest`, same-rule boundaries merged with `assertAll`); re-ran the suite: 39/39 main, 14/14 test, 74/74 tests pass, 15/15 containers. |
+| 2026-11-07 | Applied the course-level review: removed the `IntConsumer` generated-key callback, converted 19 method references to 15 `RowMapper` lambdas, removed `@FunctionalInterface`, changed `List<?>` to `List<Object>`, replaced `java.nio.file` with `java.io.File`, and replaced `String.isBlank()` with `String.trim().isEmpty()`. Re-ran compilation (39/39 main, 14/14 test) and the full suite (74/74 tests, 15/15 containers). |

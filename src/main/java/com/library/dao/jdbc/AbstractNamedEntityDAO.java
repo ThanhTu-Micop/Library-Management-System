@@ -39,7 +39,7 @@ abstract class AbstractNamedEntityDAO<T> {
         String sql = "SELECT " + idColumn + ", name, created_at FROM " + table
                 + " WHERE " + idColumn + " = ?";
         return JdbcSupport.queryOne(c, sql,
-                "Failed to find " + entityLabel + " by id: " + id, this::mapRow, id);
+                "Failed to find " + entityLabel + " by id: " + id, rs -> mapRow(rs), id);
     }
 
     public Page<T> search(Connection c, BookSearchCriteria criteria) {
@@ -49,7 +49,7 @@ abstract class AbstractNamedEntityDAO<T> {
         StringBuilder dataSb = new StringBuilder(dataBase);
         List<Object> params = new ArrayList<>();
 
-        if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
+        if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
             String clause = " AND unaccent(name) ILIKE unaccent(?)";
             countSb.append(clause);
             dataSb.append(clause);
@@ -64,14 +64,16 @@ abstract class AbstractNamedEntityDAO<T> {
 
         return JdbcSupport.search(c, countSb.toString(), dataSb.toString(), params,
                 filterParamCount, criteria.getPage(), criteria.getSize(),
-                "Failed to search " + table, this::mapRow);
+                "Failed to search " + table, rs -> mapRow(rs));
     }
 
     public int insert(Connection c, T entity) {
         String sql = "INSERT INTO " + table + " (name) VALUES (?)";
-        return JdbcSupport.insert(c, sql,
+        int id = JdbcSupport.insert(c, sql,
                 "Failed to insert " + entityLabel + ": " + getName(entity),
-                id -> setId(entity, id), getName(entity));
+                getName(entity));
+        setId(entity, id);
+        return 1;
     }
 
     public void update(Connection c, T entity) {

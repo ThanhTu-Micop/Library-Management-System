@@ -3,8 +3,8 @@
 > **Scope:** Bộ test JUnit 5 kiểm tra **DAO/JDBC**, **ràng buộc schema**, **logic nghiệp vụ**, **đồng bộ cross-table**, và **transaction/đồng thời** cho dự án `Library-Management-System` (Person 1 scope: DAO/JDBC + PostgreSQL).
 >
 > **Generated:** 2026-10-27
-> **Last re-run:** 2026-11-01 (sau khi tái tổ hợp bộ test)
-> **Target codebase:** working tree based on `main` at `b499748` in [github.com/ThanhTu-Micop/Library-Management-System](https://github.com/ThanhTu-Micop/Library-Management-System) (test-suite recombination and documentation updates are uncommitted as of this report)
+> **Last re-run:** 2026-11-07 (sau rà soát mức kiến thức Java)
+> **Target codebase:** `main` at `e39da9b` plus the 2026-11-07 course-level review changes in [github.com/ThanhTu-Micop/Library-Management-System](https://github.com/ThanhTu-Micop/Library-Management-System)
 > **Test framework:** JUnit 5 via `junit-platform-console-standalone` (không Maven, theo README §3.2)
 
 ---
@@ -40,6 +40,8 @@ Tất cả file test compile sạch với `javac --release 17 -encoding UTF-8` (
 ```
 
 Kết quả **74/74 PASS**, exit code 0, **15/15 container** (12 test class + 3 JUnit engine container). Đây là standalone JUnit evidence, không phải Maven/Surefire.
+
+> **Ghi chú 2026-11-07:** production code được rà soát lại; 19 method reference được chuyển thành 15 lambda `RowMapper`, bỏ `IntConsumer`/`@FunctionalInterface`, `List<?>` → `List<Object>`, `java.nio.file` → `java.io.File`, `isBlank()` → `trim().isEmpty()`. Bộ test và toàn bộ assertion không đổi; chạy lại vẫn **74/74 PASS**.
 
 ### 1.1 Chiến lược tái tổ hợp
 
@@ -287,7 +289,7 @@ Script tự động:
 ./scripts/run-tests.sh '*TransactionIsolation*'
 ```
 
-### 4.4 Kết quả chạy thực tế (2026-11-01)
+### 4.4 Kết quả chạy thực tế (2026-11-07, sau course-level review)
 
 Trên PostgreSQL 16.15 + JDK 17 + `library_test` đã khởi tạo:
 
@@ -340,6 +342,14 @@ Kết quả container: **15/15 successful** (12 test class + 3 JUnit engine cont
 - **124 → 74 test method**, không mất assertion; 12 class test, 14 file source.
 - Chạy lại thực tế: **39/39 main + 14/14 test biên dịch, 74/74 test PASS, 0 skipped, 15/15 container OK**.
 - Thống kê: **145 lambda**, **34 `assertAll`** trong test source.
+
+### Rà soát mức kiến thức Java 2026-11-07
+
+- Bỏ `IntConsumer` + lambda setter trong `JdbcSupport.insert`; helper trả về generated ID, DAO tự gán ID và trả `1`.
+- Chuyển 19 method reference thành 15 lambda `rs -> mapX(rs)`; bỏ `@FunctionalInterface`.
+- `List<?>` → `List<Object>`; `java.nio.file` → `java.io.File`; `String.isBlank()` → `String.trim().isEmpty()`.
+- Giữ `Page<T>`, `AbstractNamedEntityDAO<T>`, `Optional<T>`, `Page<?>` vì thuộc topic generics hoặc là design choice; chi tiết ở `docs/java-concepts-mapping.md`.
+- Chạy lại: **39/39 main, 14/14 test, 74/74 test PASS, 15/15 container**.
 
 ### Build verification
 

@@ -38,7 +38,7 @@ public class JdbcBookAuthorDAO implements BookAuthorDAO {
     @Override
     public List<Author> findByBookId(Connection c, int bookId) {
         return JdbcSupport.queryList(c, FIND_BY_BOOK_ID,
-                "Failed to find authors for book id: " + bookId, JdbcBookAuthorDAO::mapAuthor, bookId);
+                "Failed to find authors for book id: " + bookId, rs -> mapAuthor(rs), bookId);
     }
 
     @Override

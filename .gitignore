@@ -39,3 +39,6 @@ secrets/
 
 # Local caches
 .cache/
+
+# Local diagram rendering config (machine-specific Chrome path)
+docs/diagrams/puppeteer-config.json
