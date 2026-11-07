@@ -19,7 +19,7 @@ src/main/webapp/assets/{css,js}
 src/test/java/com/library/{dao,dao/support}
 scripts/{run-tests.ps1,run-tests.sh,with-postgres.ps1}
 docs/{class-design,database-design,implementation-plan,java-concepts-mapping,runtime-toolchain-audit,person1-implementation-plan,person2-controller-todo,test-suite-report}.md
-docs/diagrams/{figure-2a-domain-model,figure-2b-dao-layer}.{mmd,png}
+docs/diagrams/{figure-2a-domain-model,figure-2b-dao-layer}.{mmd,png,svg}
 ```
 
 ## 2. Cơ sở dữ liệu (Person 1)

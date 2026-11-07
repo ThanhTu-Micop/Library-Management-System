@@ -18,9 +18,11 @@ The diagram is split into two parts for readability. Figure 2a shows the domain 
 
 **Figure 2a — Domain model and search criteria**
 
-[![Figure 2a — Domain model and search criteria](diagrams/figure-2a-domain-model.png)](diagrams/figure-2a-domain-model.png)
+[![Figure 2a — Domain model and search criteria](diagrams/figure-2a-domain-model.png)](https://github.com/ThanhTu-Micop/Library-Management-System/raw/main/docs/diagrams/figure-2a-domain-model.svg)
 
-[Open PNG](diagrams/figure-2a-domain-model.png) · [Mermaid source](diagrams/figure-2a-domain-model.mmd)
+[Interactive SVG — click a class to open its source](https://github.com/ThanhTu-Micop/Library-Management-System/raw/main/docs/diagrams/figure-2a-domain-model.svg) · [Open PNG](diagrams/figure-2a-domain-model.png) · [Mermaid source](diagrams/figure-2a-domain-model.mmd)
+
+> The PNG is static. Click the image or the **Interactive SVG** link to open the SVG in a browser, then click any class box to open its Java source on GitHub. The raw link is used because GitHub's file preview embeds SVGs as images, which disables their links.
 
 <details>
 <summary>Mermaid source</summary>
@@ -218,15 +220,34 @@ classDiagram
 
     %% Page<T> is returned by DAO search methods; no domain association is drawn
     %% to keep the domain relationships readable. See Table 2 and Section VI.
+
+    click Page href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Page.java" "Open Page.java"
+    click Book href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Book.java" "Open Book.java"
+    click BookCopy href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/BookCopy.java" "Open BookCopy.java"
+    click Loan href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Loan.java" "Open Loan.java"
+    click Member href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Member.java" "Open Member.java"
+    click Author href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Author.java" "Open Author.java"
+    click Category href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Category.java" "Open Category.java"
+    click Publisher href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/Publisher.java" "Open Publisher.java"
+    click DashboardStats href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/DashboardStats.java" "Open DashboardStats.java"
+    click PageCriteria href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/criteria/PageCriteria.java" "Open PageCriteria.java"
+    click BookSearchCriteria href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/criteria/BookSearchCriteria.java" "Open BookSearchCriteria.java"
+    click MemberSearchCriteria href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/criteria/MemberSearchCriteria.java" "Open MemberSearchCriteria.java"
+    click LoanSearchCriteria href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/criteria/LoanSearchCriteria.java" "Open LoanSearchCriteria.java"
+    click CopyStatus href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/enums/CopyStatus.java" "Open CopyStatus.java"
+    click LoanStatus href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/enums/LoanStatus.java" "Open LoanStatus.java"
+    click MemberStatus href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/model/enums/MemberStatus.java" "Open MemberStatus.java"
 ```
 
 </details>
 
 **Figure 2b — DAO interfaces, JDBC implementations, and shared support**
 
-[![Figure 2b — DAO interfaces, JDBC implementations, and shared support](diagrams/figure-2b-dao-layer.png)](diagrams/figure-2b-dao-layer.png)
+[![Figure 2b — DAO interfaces, JDBC implementations, and shared support](diagrams/figure-2b-dao-layer.png)](https://github.com/ThanhTu-Micop/Library-Management-System/raw/main/docs/diagrams/figure-2b-dao-layer.svg)
 
-[Open PNG](diagrams/figure-2b-dao-layer.png) · [Mermaid source](diagrams/figure-2b-dao-layer.mmd)
+[Interactive SVG — click a class to open its source](https://github.com/ThanhTu-Micop/Library-Management-System/raw/main/docs/diagrams/figure-2b-dao-layer.svg) · [Open PNG](diagrams/figure-2b-dao-layer.png) · [Mermaid source](diagrams/figure-2b-dao-layer.mmd)
+
+> The PNG is static. Click the image or the **Interactive SVG** link to open the SVG in a browser, then click any class box to open its Java source on GitHub. The raw link is used because GitHub's file preview embeds SVGs as images, which disables their links.
 
 <details>
 <summary>Mermaid source</summary>
@@ -389,6 +410,30 @@ classDiagram
     JdbcSupport ..> RowMapper~T~ : accepts
     JdbcSupport ..> DataAccessException : throws
     DataAccessException --|> RuntimeException
+
+    click BookDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/BookDAO.java" "Open BookDAO.java"
+    click MemberDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/MemberDAO.java" "Open MemberDAO.java"
+    click LoanDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/LoanDAO.java" "Open LoanDAO.java"
+    click BookCopyDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/BookCopyDAO.java" "Open BookCopyDAO.java"
+    click BookAuthorDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/BookAuthorDAO.java" "Open BookAuthorDAO.java"
+    click AuthorDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/AuthorDAO.java" "Open AuthorDAO.java"
+    click CategoryDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/CategoryDAO.java" "Open CategoryDAO.java"
+    click PublisherDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/PublisherDAO.java" "Open PublisherDAO.java"
+    click DashboardDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/DashboardDAO.java" "Open DashboardDAO.java"
+    click AbstractNamedEntityDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/AbstractNamedEntityDAO.java" "Open AbstractNamedEntityDAO.java"
+    click JdbcBookDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcBookDAO.java" "Open JdbcBookDAO.java"
+    click JdbcMemberDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcMemberDAO.java" "Open JdbcMemberDAO.java"
+    click JdbcLoanDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcLoanDAO.java" "Open JdbcLoanDAO.java"
+    click JdbcBookCopyDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcBookCopyDAO.java" "Open JdbcBookCopyDAO.java"
+    click JdbcBookAuthorDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcBookAuthorDAO.java" "Open JdbcBookAuthorDAO.java"
+    click JdbcDashboardDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcDashboardDAO.java" "Open JdbcDashboardDAO.java"
+    click JdbcAuthorDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcAuthorDAO.java" "Open JdbcAuthorDAO.java"
+    click JdbcCategoryDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcCategoryDAO.java" "Open JdbcCategoryDAO.java"
+    click JdbcPublisherDAO href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcPublisherDAO.java" "Open JdbcPublisherDAO.java"
+    click JdbcSupport href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcSupport.java" "Open JdbcSupport.java"
+    click RowMapper href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/dao/jdbc/JdbcSupport.java" "Open JdbcSupport.java (nested RowMapper)"
+    click DataAccessException href "https://github.com/ThanhTu-Micop/Library-Management-System/blob/main/src/main/java/com/library/exception/DataAccessException.java" "Open DataAccessException.java"
+    click RuntimeException href "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/RuntimeException.html" "Open Java 17 API"
 ```
 
 </details>
